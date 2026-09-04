@@ -1,8 +1,11 @@
 """Converte os blocos de preco do catalogo Word em numeros."""
 import re
 
-RE_DE = re.compile(r'De\s*:?\s*(?:R\$)?\s*(\d{1,3}(?:\.\d{3})*,\d{2})', re.I)
-RE_POR = re.compile(r'Por\s*:?\s*(?:R\$)?\s*(\d{1,3}(?:\.\d{3})*,\d{2})', re.I)
+# (?<!\w) impede que o "de" de "verde" ou o "por" de "vapor" sejam lidos
+# como rotulo de preco. Sem isso, "Sabonete verde 30,00" viraria um preco
+# e o produto sumiria do catalogo.
+RE_DE = re.compile(r'(?<!\w)De\b\s*:?\s*(?:R\$)?\s*(\d{1,3}(?:\.\d{3})*,\d{2})', re.I)
+RE_POR = re.compile(r'(?<!\w)Por\b\s*:?\s*(?:R\$)?\s*(\d{1,3}(?:\.\d{3})*,\d{2})', re.I)
 RE_DESCONTO = re.compile(r'[–—\-]\s*(\d{1,3})\s*%')
 RE_CADA = re.compile(r'\bcada\b', re.I)
 

@@ -52,6 +52,15 @@ class TestParsePreco(unittest.TestCase):
     def test_texto_vazio_retorna_none(self):
         self.assertIsNone(parse_preco(''))
 
+    def test_de_dentro_de_palavra_nao_e_preco(self):
+        self.assertIsNone(parse_preco('Sabonete verde 30,00'))
+
+    def test_por_dentro_de_palavra_nao_e_preco(self):
+        self.assertIsNone(parse_preco('Vapor 15,00'))
+
+    def test_caixa_alta_dentro_de_palavra_nao_e_preco(self):
+        self.assertIsNone(parse_preco('SABONETE GRANDE 12,50'))
+
 
 if __name__ == '__main__':
     unittest.main()
