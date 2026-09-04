@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conferir planilha — NOSSO.ELO</title>
+<link rel="stylesheet" href="css/estilo.css">
+</head>
+<body>
+<header class="topo"><h1>Conferir planilha</h1></header>
+<main style="padding:16px">
+  <p>Abra esta página depois de atualizar a planilha para ver se ficou tudo certo.</p>
+  <button id="conferir" class="botao-enviar" style="border:0;cursor:pointer">Conferir agora</button>
+  <div id="saida" style="margin-top:20px"></div>
+</main>
+<script type="module">
+import { parseCSV } from './js/csv.js';
+import { analisar } from './js/validador.js';
+import { URL_PLANILHA } from './js/config.js';
+
+document.querySelector('#conferir').addEventListener('click', async () => {
+  const saida = document.querySelector('#saida');
+  saida.textContent = 'Conferindo...';
+  try {
+    const texto = await (await fetch(URL_PLANILHA + '&t=' + Date.now())).text();
+    const linhas = parseCSV(texto);
+
+    // O navegador nao lista pastas. Duas fontes se complementam:
+    // lista.json (gerada na migracao) permite achar imagens orfas;
+    // o teste HEAD confirma, imagem a imagem, o que realmente existe hoje.
+    let doManifesto = [];
+    try {
+      doManifesto = await (await fetch('img/lista.json?t=' + Date.now())).json();
+    } catch { doManifesto = []; }
+
+    const referenciadas = [...new Set(linhas.map((l) => (l.imagem || '').trim()).filter(Boolean))];
+    const existentes = [];
+    for (let i = 0; i < referenciadas.length; i += 20) {
+      const lote = referenciadas.slice(i, i + 20);
+      const respostas = await Promise.all(lote.map((nome) =>
+        fetch('img/' + nome, { method: 'HEAD' })
+          .then((r) => (r.ok ? nome : null))
+          .catch(() => null)));
+      existentes.push(...respostas.filter(Boolean));
+    }
+
+    const r = analisar(linhas, [...new Set([...existentes, ...doManifesto])]);
+    const erros = r.erros.map((e) => `<li>Linha ${e.linha}: ${e.motivo}</li>`).join('');
+    const avisos = r.avisos.slice(0, 50).map((a) => `<li>${a}</li>`).join('');
+    saida.innerHTML = `
+      <p><strong>${r.resumo.total}</strong> linhas ·
+         <strong>${r.resumo.ativos}</strong> à venda ·
+         <strong>${r.resumo.inativos}</strong> fora do ar ·
+         <strong>${r.resumo.semImagem}</strong> sem foto</p>
+      <h2>Erros (${r.erros.length}) — precisam ser corrigidos</h2>
+      <ul>${erros || '<li>Nenhum. Está tudo certo.</li>'}</ul>
+      <h2>Avisos (${r.avisos.length}) — dá pra publicar assim</h2>
+      <ul>${avisos || '<li>Nenhum.</li>'}</ul>`;
+  } catch (e) {
+    saida.textContent = 'Não consegui ler a planilha: ' + e.message;
+  }
+});
+</script>
+</body>
+</html>
