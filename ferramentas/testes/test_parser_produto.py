@@ -64,6 +64,15 @@ class TestParseProduto(unittest.TestCase):
         r = parse_produto('Shampoo 250 gel suave')
         self.assertIsNone(r['tamanho'])
 
+    def test_unidades_nao_e_truncado_para_un(self):
+        r = parse_produto('Sabonete 5 unidades em kit')
+        self.assertEqual(r['tamanho'], '5 unidades')
+        self.assertEqual(r['nome'], 'Sabonete')
+
+    def test_unidade_colada_a_palavra_acentuada_nao_e_tamanho(self):
+        r = parse_produto('Creme 100 mlácido suave')
+        self.assertIsNone(r['tamanho'])
+
 
 if __name__ == '__main__':
     unittest.main()

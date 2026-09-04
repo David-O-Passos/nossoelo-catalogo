@@ -6,7 +6,7 @@ import re
 # mas nao pode ser o inicio de uma palavra minuscula ("100 gramas", "250 gel"),
 # o que casaria 'g' e comeria parte do nome. Um \b simples reprova os dois.
 RE_TAMANHO = re.compile(
-    r'(\d{1,4}(?:,\d{1,2})?)\s*(ml|g|kg|un|unidades?)(?!(?-i:[a-z]))', re.I)
+    r'(\d{1,4}(?:,\d{1,2})?)\s*(ml|g|kg|un|unidades?)(?!(?-i:[a-zà-ü]))', re.I)
 RE_TRANSICAO = re.compile(r'^([A-ZÀ-Ü0-9][A-ZÀ-Ü0-9\s\.\-]{2,}?)(?=[A-ZÀ-Ü][a-zà-ü])')
 
 
