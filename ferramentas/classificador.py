@@ -28,7 +28,7 @@ def _sem_acento(texto):
 
 
 def classificar(token):
-    """Devolve o papel do token: img, nome, sep, esgotado ou outro."""
+    """Devolve o papel do token: img, nome, sep, ruido, esgotado ou outro."""
     if token['tipo'] == 'img':
         alvo = token['valor'].lower()
         return 'outro' if alvo.endswith(IMAGENS_DESCARTADAS) else 'img'
@@ -45,16 +45,21 @@ def classificar(token):
     if parse_preco(bruto):
         return 'sep'
 
+    # Um texto com tamanho ("120ml", "30 un") e um produto, nunca um rotulo
+    # de secao, mesmo quando cita marca ou categoria de passagem
+    # (ex.: 'Dr Botica locao infantil 120ml', 'LANCAMENTOArabian Oasis').
+    tem_tamanho = bool(parse_produto(bruto)['tamanho'])
+
     # Rotulos de secao sao curtos. Um nome de produto pode citar a marca no
     # meio da descricao, entao o limite de tamanho e o que separa os dois.
-    if len(bruto) <= LIMITE_CABECALHO:
+    if not tem_tamanho and len(bruto) <= LIMITE_CABECALHO:
         if any(m in plano for m in MARCAS):
             return 'sep'
         if any(c in plano for c in CATEGORIAS):
             return 'sep'
 
     if any(plano == r or plano.startswith(r) for r in RUIDO):
-        return 'sep'
+        return 'ruido'
 
     # Sobras de tabela de preco (ex.: '– 32%', '30,00 (120g) 35,00 (200g)')
     # nao tem "De:"/"Por:" para o parse_preco reconhecer, mas tambem nao sao

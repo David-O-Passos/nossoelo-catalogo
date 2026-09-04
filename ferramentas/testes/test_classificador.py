@@ -29,11 +29,15 @@ class TestClassificar(unittest.TestCase):
     def test_cabecalho_de_categoria_e_separador(self):
         self.assertEqual(classificar(txt('Perfumaria Feminina')), 'sep')
 
-    def test_tagline_e_separador(self):
-        self.assertEqual(classificar(txt('Os melhores preços você encontra aqui...')), 'sep')
+    def test_tagline_e_ruido(self):
+        # Slogan da pagina: nao e produto nem rotulo de secao, entao nao
+        # pode virar categoria (papel proprio 'ruido', nao mais 'sep').
+        self.assertEqual(
+            classificar(txt('Os melhores preços você encontra aqui...')),
+            'ruido')
 
-    def test_cada_e_separador(self):
-        self.assertEqual(classificar(txt('Cada')), 'sep')
+    def test_cada_e_ruido(self):
+        self.assertEqual(classificar(txt('Cada')), 'ruido')
 
     def test_esgotado_tem_classe_propria(self):
         self.assertEqual(classificar(txt('ESGOTADO')), 'esgotado')
@@ -79,6 +83,18 @@ class TestClassificar(unittest.TestCase):
         self.assertEqual(
             classificar(txt('Discreto: para trabalhar ou ir ao parque')),
             'nome')
+
+    def test_ruido_tem_papel_proprio_e_nao_vira_secao(self):
+        self.assertEqual(classificar(txt('LANÇAMENTO')), 'ruido')
+
+    def test_nome_com_tamanho_nao_vira_secao_mesmo_citando_categoria(self):
+        # 'infantil' e palavra de categoria, mas o tamanho '120ml' entrega
+        # que isto e um produto de verdade, nao um rotulo de secao.
+        self.assertEqual(
+            classificar(txt('Dr Botica loção infantil 120ml')), 'nome')
+
+    def test_cabecalho_de_categoria_sem_tamanho_continua_secao(self):
+        self.assertEqual(classificar(txt('Perfumaria Feminina')), 'sep')
 
 
 class TestGerarId(unittest.TestCase):
