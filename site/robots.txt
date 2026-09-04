@@ -1,0 +1,4 @@
+User-agent: *
+Disallow: /enviar-foto.html
+Disallow: /validar.html
+Allow: /

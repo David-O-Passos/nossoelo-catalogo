@@ -190,6 +190,14 @@ async function iniciar() {
   todos = await carregarProdutos({ backup });
 
   const avisos = carrinho.reconciliar(todos);
+  // Se carregarProdutos devolveu exatamente o array de backup que passamos
+  // (mesma referencia), e porque cache e rede falharam e ele caiu no
+  // congelado embutido no site. Isso pode durar semanas sem que ninguem
+  // perceba se a planilha estiver quebrada; avisar na tela e a unica rede
+  // de seguranca.
+  if (todos === backup) {
+    avisos.push('Preços podem estar desatualizados. Confirme pelo WhatsApp antes de fechar o pedido.');
+  }
   if (avisos.length) {
     $('#avisos').hidden = false;
     $('#avisos').textContent = avisos.join(' ');
