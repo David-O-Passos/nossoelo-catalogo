@@ -62,7 +62,9 @@ $('#enviar').addEventListener('click', async () => {
       ? `Pronto! Escreva "${r.arquivo}" na coluna imagem da planilha. A foto aparece no site em cerca de 1 minuto.`
       : 'Erro: ' + r.erro;
   } catch (e) {
-    $('#status').textContent = 'Falhou: ' + e.message;
+    $('#status').textContent =
+      'Não consegui enviar a foto. Confira sua internet e tente de novo. '
+      + 'Se continuar, avise o David. (detalhe técnico: ' + e.message + ')';
   }
 });
 </script>
