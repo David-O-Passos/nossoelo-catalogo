@@ -53,6 +53,16 @@ function cartao(p) {
     e.target.src = 'img/placeholder.webp';
   });
 
+  // Toque na foto ou no nome deixa o link compartilhavel: ?p=<id> na barra de
+  // enderecos, sem navegar e sem mudar nada na tela. E o que permite ao
+  // GUIA.md dizer "copie o link da barra de enderecos" para mandar um
+  // produto especifico pelo WhatsApp.
+  const marcarLink = () => {
+    history.replaceState(null, '', `?p=${encodeURIComponent(p.id)}`);
+  };
+  el.querySelector('img').addEventListener('click', marcarLink);
+  el.querySelector('h3').addEventListener('click', marcarLink);
+
   const botao = el.querySelector('.somar');
   botao.addEventListener('click', () => {
     // Guarda o nome ja limpo: ele vai literal para a mensagem do WhatsApp,
@@ -120,7 +130,11 @@ function render() {
     // Produto com foto vem primeiro. Array.sort e estavel, entao a ordem
     // escolhida pelo cliente e preservada dentro de cada grupo. Sem isto a
     // primeira tela do celular enche de quadro cinza e o catalogo parece vazio.
-    .sort((a, b) => (a.imagem ? 0 : 1) - (b.imagem ? 0 : 1));
+    .sort((a, b) => (a.imagem ? 0 : 1) - (b.imagem ? 0 : 1))
+    // Produto em destaque vem antes de tudo. Por ser a ultima ordenacao (e o
+    // sort continuar estavel), o agrupamento por foto e a ordem escolhida pelo
+    // cliente ficam preservados dentro de cada grupo de destaque.
+    .sort((a, b) => (a.destaque ? 0 : 1) - (b.destaque ? 0 : 1));
 
   $('#grade').replaceChildren(...lista.map(cartao));
   $('#vazio').hidden = lista.length > 0;
