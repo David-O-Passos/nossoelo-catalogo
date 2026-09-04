@@ -37,15 +37,18 @@ Priorize nesta ordem:
 1. Crie uma planilha nova no Google Sheets.
 2. **Arquivo → Configurações → Local: Brasil.** Isso faz o separador decimal ser vírgula.
 3. Importe `ferramentas/saida/produtos.csv`.
-4. Na coluna `preco_por`, a partir da linha 2, coloque a fórmula:
+4. Copie a coluna inteira `preco_por` (coluna **J**) e cole em uma coluna nova, a **M**, usando **colar somente valores** (Ctrl+Shift+V). Dê a ela o título `preco_original`.
+
+   Essa coluna M guarda o preço que veio migrado do catálogo antigo, usado nas linhas que não têm o par `preco_de`/`desconto` para calcular a partir dele. Sem ela, a fórmula do passo seguinte ficaria se referenciando — e o Google Sheets recusa isso com "Erro de referência circular".
+5. Agora, na coluna `preco_por` (**J**), a partir da linha 2, coloque a fórmula e arraste para baixo:
 
    ```
-   =SE(E(H2<>"";I2<>"");ARRED(H2*(1-I2/100);2);J2)
+   =SE(E(H2<>"";I2<>"");ARRED(H2*(1-I2/100);2);M2)
    ```
 
-   `H` é `preco_de`, `I` é `desconto`, `J` é o valor já digitado. Assim ele mexe só no desconto e o preço final se ajusta.
-5. **Arquivo → Compartilhar → Publicar na web** → aba `produtos`, formato **CSV** → copie o link.
-6. Compartilhe a planilha com ele como **editor**.
+   `H` é `preco_de`, `I` é `desconto`, `M` é o valor migrado colado no passo anterior. Assim ele mexe só no desconto e o preço final se ajusta, mas cai no valor original para quem não tem desconto cadastrado.
+6. **Arquivo → Compartilhar → Publicar na web** → aba `produtos`, formato **CSV** → copie o link.
+7. Compartilhe a planilha com ele como **editor**.
 
 > Proteja a linha do cabeçalho (**Dados → Proteger intervalos**). É o jeito mais barato de evitar que um arrastão acidental renomeie uma coluna e derrube o site.
 
@@ -111,12 +114,14 @@ Em **Settings → Environment variables**, cadastre:
 
 | Variável | Valor |
 |---|---|
-| `SENHA_UPLOAD` | uma senha simples que ele consiga digitar no celular |
+| `SENHA_UPLOAD` | uma frase de quatro palavras sem relação entre si (ex.: `cavalo-lampada-verao-porta`), fácil de digitar no celular e difícil de adivinhar |
 | `GITHUB_TOKEN` | token fine-grained, permissão **Contents: read and write**, só neste repositório |
 | `GITHUB_REPO` | `seu-usuario/nossoelo-catalogo` |
 | `GITHUB_BRANCH` | `main` |
 
 > O token do GitHub fica **só** na Cloudflare. Ele nunca chega ao navegador — é exatamente por isso que existe a função `/api/upload` em vez da página falar direto com o GitHub. Não coloque esse token em nenhum arquivo do repositório.
+>
+> `/api/upload` não tem limite de tentativas (rate limiting). Essa frase-senha é a única coisa que protege o envio de fotos — escolha algo que ninguém adivinhe testando palavras óbvias.
 
 ---
 
