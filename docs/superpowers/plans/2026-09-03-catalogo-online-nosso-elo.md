@@ -35,13 +35,15 @@ SITE CATALOGO ATEMILTON/
 │   ├── parser_produto.py           # texto → nome, tamanho, descrição
 │   ├── docx_leitor.py              # .docx → tokens ordenados com coordenadas
 │   ├── imagens.py                  # extrai e converte para WebP
-│   ├── pareador.py                 # associa imagem ao produto
+│   ├── classificador.py            # papel de cada token + gerar id
+│   ├── pareador.py                 # casa produto com foto pela legenda
 │   ├── extrair.py                  # orquestra tudo, gera CSV e relatório
 │   └── testes/
 │       ├── test_parser_preco.py
 │       ├── test_parser_produto.py
 │       ├── test_docx_leitor.py
-│       └── test_pareador.py
+│       ├── test_pareador.py
+│       └── test_classificador.py
 ├── site/                           # Publicado no Cloudflare Pages
 │   ├── index.html
 │   ├── validar.html
@@ -788,81 +790,168 @@ git commit -m "feat: extracao e conversao das imagens para WebP"
 
 ---
 
-### Task 5: Pareador de imagem e produto
+### Passo de legendagem (executado uma vez, fora do codigo)
+
+Antes da Task 5 rodar, cada foto do catalogo precisa de uma legenda. Este passo nao e codigo de producao: e uma leitura assistida por IA, feita uma unica vez, cujo produto e o arquivo `ferramentas/saida/legendas.json`.
+
+As 747 imagens convertidas foram divididas em 25 lotes de ate 30 e distribuidas a subagentes com visao. Cada um le as imagens do seu lote e registra o que ve — sobretudo o texto impresso na embalagem, que e o que identifica o produto. As instrucoes completas do lote estao em `.superpowers/sdd/2026-09-03-catalogo-online-nosso-elo/lotes/INSTRUCOES.md`, e a regra que rege o passo e uma so: **precisao vale mais que cobertura**. Legenda vazia e aceitavel; legenda errada envenena o catalogo.
+
+Ao final, os 25 arquivos `lote-NN-resultado.json` sao concatenados em `legendas.json`.
+
+Um piloto de 24 imagens validou a abordagem antes da escala: 22 de 24 sairam com confianca alta, e as 2 restantes foram honestamente marcadas como incertas em vez de adivinhadas.
+
+---
+
+### Task 5: Casamento entre produto e imagem
 
 **Files:**
 - Create: `ferramentas/pareador.py`
 - Test: `ferramentas/testes/test_pareador.py`
 
 **Interfaces:**
-- Consumes: tokens de `docx_leitor.ler_tokens`.
-- Produces: `parear(tokens: list[dict]) -> list[dict]`. Cada resultado é `{'nome_token': dict, 'imagem': str|None, 'distancia': int|None, 'confianca': 'alta'|'baixa'}`.
+- Consumes: nada.
+- Produces:
+  - `normalizar(texto: str) -> str` — minúsculas, sem acento, sem pontuação, espaços colapsados.
+  - `palavras(texto: str) -> set[str]` — tokens com 2 caracteres ou mais, descartando palavras vazias de catálogo (`de`, `da`, `ml`, `natura`, ...).
+  - `similaridade(a: str, b: str) -> float` — índice de Jaccard entre os conjuntos de palavras, de 0 a 1.
+  - `casar(produtos: list[dict], legendas: list[dict], minimo: float = 0.34) -> dict[str, dict]` — mapeia `produto['id']` para `{'arquivo': str, 'escore': float, 'confianca': 'alta'|'baixa'}`.
 
-Regra: para cada token de texto, considera as imagens da mesma página cujo topo esteja acima do texto, escolhendo a de menor distância vertical com sobreposição horizontal. Uma imagem só pode ser usada por um produto. Quando não há imagem elegível na página, ou quando a distância excede 1.500.000 EMU (aproximadamente 4 cm), o resultado sai com `confianca: 'baixa'`.
+#### Por que este desenho, e não o anterior
+
+A primeira versão deste plano pareava foto e produto por coordenada geométrica. **Foi medida contra o documento real e rendeu 9%** (37 de 411). A causa é estrutural: as coordenadas do `.docx` são relativas ao parágrafo âncora, não à página — 1.155 âncoras `paragraph` e 1.117 `column` contra apenas 11 `page`, com Y variando de −581.025 a +9.357.278 e 197 valores negativos. Comparar Y entre âncoras diferentes não tem significado.
+
+A segunda tentativa pareou por ordem documental, alinhando blocos de imagens com blocos de nomes. Rendeu 38–76%, mas **foi reprovada por conferência visual**: no bloco `image31`–`image33` acertou (Kaiak Tradicional, Aventura, Aero), e no bloco `image180`–`image185` errou tudo — `image180` é o Aero e não o Tradicional, `image182` é o Urbe e não o Aventura. Cobertura alta com foto trocada é pior do que produto sem foto.
+
+O sinal que de fato funciona é o mais óbvio: **o nome do produto está impresso no frasco**. As imagens foram legendadas por visão, uma vez, num passo separado, e este módulo casa nome de produto com legenda por similaridade de texto.
+
+#### Entrada de legendas
+
+O passo de legendagem produz `ferramentas/saida/legendas.json`, um array de objetos:
+
+```json
+{
+  "arquivo": "image181.webp",
+  "tipo": "produto",
+  "texto_visivel": "natura KAIAK PULSO",
+  "marca": "Natura",
+  "produto": "Kaiak Pulso",
+  "descricao_visual": "frasco retangular azul-marinho com tampa azul-claro",
+  "confianca": "alta",
+  "multiplos": false
+}
+```
+
+Apenas objetos com `tipo == "produto"` participam do casamento. Emojis, banners e balões de preço ficam de fora.
 
 - [ ] **Step 1: Escrever o teste que falha**
 
 Criar `ferramentas/testes/test_pareador.py`:
 
 ```python
-import unittest, sys, os
+import unittest
+import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from pareador import parear
+from pareador import normalizar, palavras, similaridade, casar
 
 
-def img(nome, pagina, x, y, largura=500000, altura=500000, offset=0):
-    return {'tipo': 'img', 'valor': nome, 'pagina': pagina, 'x': x, 'y': y,
-            'largura': largura, 'altura': altura, 'offset': offset}
+def legenda(arquivo, produto, texto='', tipo='produto', confianca='alta'):
+    return {'arquivo': arquivo, 'tipo': tipo, 'produto': produto,
+            'texto_visivel': texto or produto, 'marca': '',
+            'descricao_visual': '', 'confianca': confianca, 'multiplos': False}
 
 
-def txt(valor, pagina, x, y, offset=0):
-    return {'tipo': 'txt', 'valor': valor, 'pagina': pagina, 'x': x, 'y': y,
-            'largura': 500000, 'altura': 200000, 'offset': offset}
+def produto(pid, nome):
+    return {'id': pid, 'nome': nome, 'marca': '', 'tamanho': ''}
 
 
-class TestParear(unittest.TestCase):
+class TestNormalizar(unittest.TestCase):
 
-    def test_associa_imagem_logo_acima(self):
-        t = [img('a.webp', 1, 0, 0), txt('KAIAK', 1, 0, 600000)]
-        r = parear(t)
-        self.assertEqual(r[0]['imagem'], 'a.webp')
-        self.assertEqual(r[0]['confianca'], 'alta')
+    def test_remove_acento_e_caixa(self):
+        self.assertEqual(normalizar('Ekos Açaí'), 'ekos acai')
 
-    def test_escolhe_a_imagem_mais_proxima(self):
-        t = [img('longe.webp', 1, 0, 0), img('perto.webp', 1, 0, 500000),
-             txt('KAIAK', 1, 0, 1100000)]
-        self.assertEqual(parear(t)[0]['imagem'], 'perto.webp')
+    def test_remove_pontuacao_e_colapsa_espaco(self):
+        self.assertEqual(normalizar('KAIAK  -  Aero, 100ml!'), 'kaiak aero 100ml')
 
-    def test_ignora_imagem_de_outra_pagina(self):
-        t = [img('outra.webp', 1, 0, 0), txt('KAIAK', 2, 0, 600000)]
-        r = parear(t)
-        self.assertIsNone(r[0]['imagem'])
-        self.assertEqual(r[0]['confianca'], 'baixa')
 
-    def test_ignora_imagem_abaixo_do_texto(self):
-        t = [txt('KAIAK', 1, 0, 0), img('abaixo.webp', 1, 0, 900000)]
-        self.assertIsNone(parear(t)[0]['imagem'])
+class TestPalavras(unittest.TestCase):
 
-    def test_exige_sobreposicao_horizontal(self):
-        t = [img('lado.webp', 1, 5000000, 0), txt('KAIAK', 1, 0, 600000)]
-        self.assertIsNone(parear(t)[0]['imagem'])
+    def test_descarta_palavras_vazias(self):
+        self.assertEqual(palavras('Deo Parfum de Natura ml'), {'deo', 'parfum'})
+
+    def test_mantem_numero_de_cor(self):
+        self.assertIn('260', palavras('Batom Intense cor 260'))
+
+
+class TestSimilaridade(unittest.TestCase):
+
+    def test_identico_da_um(self):
+        self.assertEqual(similaridade('Kaiak Aero', 'Kaiak Aero'), 1.0)
+
+    def test_sem_nada_em_comum_da_zero(self):
+        self.assertEqual(similaridade('Kaiak Aero', 'Malbec Gold'), 0.0)
+
+    def test_parcial_fica_entre_zero_e_um(self):
+        s = similaridade('Kaiak Aero 100', 'Kaiak Aero')
+        self.assertGreater(s, 0.5)
+        self.assertLess(s, 1.0)
+
+    def test_e_simetrica(self):
+        self.assertEqual(similaridade('a bola', 'bola a'), similaridade('bola a', 'a bola'))
+
+
+class TestCasar(unittest.TestCase):
+
+    def test_casa_nome_identico(self):
+        r = casar([produto('p1', 'Kaiak Aero')], [legenda('a.webp', 'Kaiak Aero')])
+        self.assertEqual(r['p1']['arquivo'], 'a.webp')
+        self.assertEqual(r['p1']['confianca'], 'alta')
+
+    def test_escolhe_a_legenda_mais_parecida(self):
+        r = casar([produto('p1', 'Kaiak Aventura')],
+                  [legenda('errada.webp', 'Kaiak Aero'),
+                   legenda('certa.webp', 'Kaiak Aventura')])
+        self.assertEqual(r['p1']['arquivo'], 'certa.webp')
 
     def test_uma_imagem_nao_serve_dois_produtos(self):
-        t = [img('a.webp', 1, 0, 0), txt('KAIAK', 1, 0, 600000),
-             txt('HUMOR', 1, 0, 700000)]
-        usados = [x['imagem'] for x in parear(t)]
+        r = casar([produto('p1', 'Kaiak Aero'), produto('p2', 'Kaiak Aero 100 ml')],
+                  [legenda('a.webp', 'Kaiak Aero')])
+        usados = [v['arquivo'] for v in r.values()]
         self.assertEqual(usados.count('a.webp'), 1)
 
-    def test_distancia_grande_reduz_confianca(self):
-        t = [img('a.webp', 1, 0, 0), txt('KAIAK', 1, 0, 9000000)]
-        r = parear(t)
-        self.assertEqual(r[0]['confianca'], 'baixa')
+    def test_abaixo_do_minimo_nao_casa(self):
+        r = casar([produto('p1', 'Malbec Gold')], [legenda('a.webp', 'Kaiak Aero')])
+        self.assertNotIn('p1', r)
 
-    def test_texto_sem_coordenada_sai_com_confianca_baixa(self):
-        t = [img('a.webp', 1, 0, 0),
-             {'tipo': 'txt', 'valor': 'X', 'pagina': 1, 'x': None, 'y': None,
-              'largura': None, 'altura': None, 'offset': 0}]
-        self.assertEqual(parear(t)[0]['confianca'], 'baixa')
+    def test_ignora_legenda_decorativa(self):
+        r = casar([produto('p1', 'Kaiak Aero')],
+                  [legenda('emoji.webp', 'Kaiak Aero', tipo='decorativo')])
+        self.assertNotIn('p1', r)
+
+    def test_legenda_de_baixa_confianca_rebaixa_o_par(self):
+        r = casar([produto('p1', 'Kaiak Aero')],
+                  [legenda('a.webp', 'Kaiak Aero', confianca='baixa')])
+        self.assertEqual(r['p1']['confianca'], 'baixa')
+
+    def test_escore_apertado_rebaixa_o_par(self):
+        r = casar([produto('p1', 'Deo Parfum Essencial Unico Feminino')],
+                  [legenda('a.webp', 'Essencial Unico')])
+        self.assertEqual(r['p1']['confianca'], 'baixa')
+
+    def test_o_melhor_par_global_vence_a_ordem_da_lista(self):
+        # 'p1' aparece antes, mas 'p2' casa melhor com a unica imagem.
+        r = casar([produto('p1', 'Kaiak Aero Masculino'), produto('p2', 'Kaiak Aero')],
+                  [legenda('a.webp', 'Kaiak Aero')])
+        self.assertEqual(r['p2']['arquivo'], 'a.webp')
+        self.assertNotIn('p1', r)
+
+    def test_listas_vazias_nao_quebram(self):
+        self.assertEqual(casar([], []), {})
+        self.assertEqual(casar([produto('p1', 'X')], []), {})
+
+    def test_usa_texto_visivel_quando_produto_esta_vazio(self):
+        l = legenda('a.webp', '', texto='KAIAK AERO')
+        r = casar([produto('p1', 'Kaiak Aero')], [l])
+        self.assertEqual(r['p1']['arquivo'], 'a.webp')
 
 
 if __name__ == '__main__':
@@ -879,73 +968,98 @@ Esperado: FAIL com `ModuleNotFoundError: No module named 'pareador'`
 Criar `ferramentas/pareador.py`:
 
 ```python
-"""Associa cada caixa de texto de produto a imagem que aparece acima dela."""
+"""Casa cada produto com a foto cuja legenda mais se parece com o nome dele.
 
-DISTANCIA_MAXIMA = 1500000  # EMU, cerca de 4 cm
+As coordenadas do .docx nao servem para isso: sao relativas ao paragrafo
+ancora, nao a pagina. A ordem documental tambem nao: foi conferida contra
+as fotos e troca produtos de lugar. O sinal confiavel e o nome impresso no
+frasco, capturado no passo de legendagem.
+"""
+import re
+import unicodedata
+
+# Palavras que aparecem em quase todo item e por isso nao distinguem nada.
+VAZIAS = {
+    'de', 'da', 'do', 'das', 'dos', 'e', 'em', 'com', 'para', 'por', 'a', 'o',
+    'ml', 'gr', 'kg', 'un', 'g', 'natura', 'boticario', 'avon', 'eudora',
+    'perfume', 'perfumaria', 'linha', 'produto', 'refil', 'cada',
+}
+
+ESCORE_ALTO = 0.6
 
 
-def _sobrepoe_horizontal(a, b):
-    a_fim = a['x'] + (a['largura'] or 0)
-    b_fim = b['x'] + (b['largura'] or 0)
-    return a['x'] < b_fim and b['x'] < a_fim
+def normalizar(texto):
+    """Minusculas, sem acento, sem pontuacao, espacos colapsados."""
+    t = unicodedata.normalize('NFD', str(texto or '').lower())
+    t = ''.join(c for c in t if unicodedata.category(c) != 'Mn')
+    t = re.sub(r'[^a-z0-9]+', ' ', t)
+    return re.sub(r'\s+', ' ', t).strip()
 
 
-def parear(tokens):
-    """Para cada token de texto, escolhe a imagem elegivel mais proxima."""
-    imagens = [t for t in tokens if t['tipo'] == 'img'
-               and t['x'] is not None and t['y'] is not None]
-    textos = [t for t in tokens if t['tipo'] == 'txt']
+def palavras(texto):
+    """Conjunto de tokens significativos do texto."""
+    return {p for p in normalizar(texto).split()
+            if len(p) >= 2 and p not in VAZIAS}
+
+
+def similaridade(a, b):
+    """Indice de Jaccard entre os conjuntos de palavras. 0 quando nao ha uniao."""
+    pa, pb = palavras(a), palavras(b)
+    if not pa or not pb:
+        return 0.0
+    return len(pa & pb) / len(pa | pb)
+
+
+def _rotulo(legenda):
+    """O texto da legenda que melhor identifica o item."""
+    return legenda.get('produto') or legenda.get('texto_visivel') or ''
+
+
+def casar(produtos, legendas, minimo=0.34):
+    """Casa produtos com legendas, do par mais forte para o mais fraco.
+
+    Cada imagem serve a um unico produto. Pares abaixo de `minimo` ficam de
+    fora — e melhor um produto sem foto do que com a foto errada.
+    """
+    candidatas = [l for l in legendas if l.get('tipo') == 'produto']
+
+    pontuados = []
+    for p in produtos:
+        alvo = ' '.join(filter(None, [p.get('nome', ''), p.get('tamanho', '')]))
+        for l in candidatas:
+            escore = similaridade(alvo, _rotulo(l))
+            if escore >= minimo:
+                pontuados.append((escore, p['id'], l))
+
+    # Do melhor escore para o pior, para que o par mais forte tenha prioridade
+    # sobre a ordem em que os produtos aparecem na lista.
+    pontuados.sort(key=lambda t: -t[0])
+
+    resultado = {}
     usadas = set()
-    resultado = []
-
-    for texto in textos:
-        if texto['x'] is None or texto['y'] is None:
-            resultado.append({'nome_token': texto, 'imagem': None,
-                              'distancia': None, 'confianca': 'baixa'})
+    for escore, pid, l in pontuados:
+        if pid in resultado or l['arquivo'] in usadas:
             continue
-
-        melhor = None
-        melhor_dist = None
-        for im in imagens:
-            if im['valor'] in usadas:
-                continue
-            if im['pagina'] != texto['pagina']:
-                continue
-            base_img = im['y'] + (im['altura'] or 0)
-            if base_img > texto['y']:
-                continue
-            if not _sobrepoe_horizontal(im, texto):
-                continue
-            dist = texto['y'] - base_img
-            if melhor_dist is None or dist < melhor_dist:
-                melhor, melhor_dist = im, dist
-
-        if melhor is None:
-            resultado.append({'nome_token': texto, 'imagem': None,
-                              'distancia': None, 'confianca': 'baixa'})
-            continue
-
-        usadas.add(melhor['valor'])
-        resultado.append({
-            'nome_token': texto,
-            'imagem': melhor['valor'],
-            'distancia': melhor_dist,
-            'confianca': 'alta' if melhor_dist <= DISTANCIA_MAXIMA else 'baixa',
-        })
-
+        usadas.add(l['arquivo'])
+        resultado[pid] = {
+            'arquivo': l['arquivo'],
+            'escore': round(escore, 3),
+            'confianca': ('alta' if escore >= ESCORE_ALTO
+                          and l.get('confianca') == 'alta' else 'baixa'),
+        }
     return resultado
 ```
 
 - [ ] **Step 4: Rodar o teste e confirmar que passa**
 
 Rodar: `python -m unittest ferramentas.testes.test_pareador -v`
-Esperado: PASS, 8 testes
+Esperado: PASS, 16 testes
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add ferramentas/pareador.py ferramentas/testes/test_pareador.py
-git commit -m "feat: pareamento de imagem e produto por coordenada"
+git commit -m "feat: casamento entre produto e imagem por similaridade de legenda"
 ```
 
 ---
@@ -953,29 +1067,207 @@ git commit -m "feat: pareamento de imagem e produto por coordenada"
 ### Task 6: Orquestrador e geração do CSV
 
 **Files:**
+- Create: `ferramentas/classificador.py`
 - Create: `ferramentas/extrair.py`
+- Test: `ferramentas/testes/test_classificador.py`
 
 **Interfaces:**
-- Consumes: `parse_preco`, `parse_produto`, `ler_tokens`, `extrair_imagens`, `parear`.
-- Produces: dois arquivos em `ferramentas/saida/` — `produtos.csv` com as colunas do spec, e `conferir.csv` com as linhas de confiança baixa que precisam de revisão manual.
+- Consumes: `parse_preco`, `parse_produto`, `ler_tokens`, `extrair_imagens`, `casar`.
+- Produces:
+  - `classificar(token: dict) -> 'img' | 'nome' | 'sep' | 'esgotado' | 'outro'` em `classificador.py`.
+  - `gerar_id(nome: str, tamanho: str | None, usados: set) -> str` em `classificador.py`.
+  - Dois arquivos em `ferramentas/saida/`: `produtos.csv` com as colunas do spec e `conferir.csv` com as linhas que precisam de revisão humana.
 
-Um bloco de preço vale para o grupo de produtos que o antecede desde o preço anterior. O orquestrador percorre os tokens em ordem, acumula nomes de produto e, ao encontrar um preço, aplica-o a todos os nomes acumulados.
+O classificador vive em módulo próprio porque é a peça mais delicada da migração e a que mais vai ser ajustada: separar "nome de produto" de "cabeçalho de seção", "bloco de preço" e "texto solto de página" é o que decide quantos produtos entram corretamente. Isolá-lo o torna testável sem abrir um `.docx`.
 
-- [ ] **Step 1: Escrever o orquestrador**
+Um bloco de preço vale para o grupo de produtos que o antecede desde o preço anterior — é assim que o documento está montado.
+
+- [ ] **Step 1: Escrever o teste que falha**
+
+Criar `ferramentas/testes/test_classificador.py`:
+
+```python
+import unittest
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from classificador import classificar, gerar_id
+
+
+def txt(valor):
+    return {'tipo': 'txt', 'valor': valor}
+
+
+def img(nome):
+    return {'tipo': 'img', 'valor': nome}
+
+
+class TestClassificar(unittest.TestCase):
+
+    def test_imagem_normal(self):
+        self.assertEqual(classificar(img('media/image31.jpeg')), 'img')
+
+    def test_imagem_wdp_e_descartada(self):
+        self.assertEqual(classificar(img('media/hdphoto3.wdp')), 'outro')
+
+    def test_bloco_de_preco_e_separador(self):
+        self.assertEqual(classificar(txt('De: R$ 189,90 \u2013 42%Por: R$ 110,00')), 'sep')
+
+    def test_cabecalho_de_marca_e_separador(self):
+        self.assertEqual(classificar(txt('Natura')), 'sep')
+
+    def test_cabecalho_de_categoria_e_separador(self):
+        self.assertEqual(classificar(txt('Perfumaria Feminina')), 'sep')
+
+    def test_tagline_e_separador(self):
+        self.assertEqual(classificar(txt('Os melhores pre\u00e7os voc\u00ea encontra aqui...')), 'sep')
+
+    def test_cada_e_separador(self):
+        self.assertEqual(classificar(txt('Cada')), 'sep')
+
+    def test_esgotado_tem_classe_propria(self):
+        self.assertEqual(classificar(txt('ESGOTADO')), 'esgotado')
+
+    def test_nome_de_produto(self):
+        self.assertEqual(classificar(txt('KAIAK AVENTURA100 mlFloral aquoso.')), 'nome')
+
+    def test_texto_curto_demais_e_descartado(self):
+        self.assertEqual(classificar(txt('.')), 'outro')
+
+    def test_texto_vazio_e_descartado(self):
+        self.assertEqual(classificar(txt('   ')), 'outro')
+
+    def test_nome_longo_com_marca_dentro_nao_vira_separador(self):
+        # 'Natura' aparece, mas o texto e claramente um produto descrito.
+        t = txt('DEO PARFUM ESSENCIAL OUD FEMININO 100 ml Amadeirado intenso da Natura')
+        self.assertEqual(classificar(t), 'nome')
+
+
+class TestGerarId(unittest.TestCase):
+
+    def test_gera_slug_sem_acento(self):
+        self.assertEqual(gerar_id('Ekos A\u00e7a\u00ed', '100 ml', set()), 'ekos-acai-100-ml')
+
+    def test_sem_tamanho(self):
+        self.assertEqual(gerar_id('Kaiak Aero', None, set()), 'kaiak-aero')
+
+    def test_desambigua_repetido(self):
+        usados = set()
+        a = gerar_id('Kaiak Aero', None, usados)
+        b = gerar_id('Kaiak Aero', None, usados)
+        self.assertEqual(a, 'kaiak-aero')
+        self.assertEqual(b, 'kaiak-aero-2')
+
+    def test_nome_sem_letras_vira_produto(self):
+        self.assertEqual(gerar_id('!!!', None, set()), 'produto')
+
+
+if __name__ == '__main__':
+    unittest.main()
+```
+
+- [ ] **Step 2: Rodar o teste e confirmar que falha**
+
+Rodar: `python -m unittest ferramentas.testes.test_classificador -v`
+Esperado: FAIL com `ModuleNotFoundError: No module named 'classificador'`
+
+- [ ] **Step 3: Escrever o classificador**
+
+Criar `ferramentas/classificador.py`:
+
+```python
+"""Decide o papel de cada token do catalogo e gera ids estaveis."""
+import re
+import unicodedata
+
+from parser_preco import parse_preco
+from parser_produto import parse_produto
+
+IMAGENS_DESCARTADAS = ('.wdp', '.emf', '.wmf')
+
+MARCAS = ('natura', 'o boticario', 'boticario', 'avon', 'eudora',
+          'arabes', 'capilar', 'lattafa')
+
+CATEGORIAS = ('perfumaria', 'feminin', 'masculin', 'corpo e banho', 'rosto',
+              'cabelo', 'maquiagem', 'infantil', 'casa', 'kits', 'presente',
+              'miniaturas', 'linha ')
+
+RUIDO = ('os melhores precos', 'viva uma vida perfumada', 'qualquer duvida',
+         'whatsapp', 'cada', 'lancamento', 'novo', 'promocao', 'frete',
+         'entrega', 'pagamento', 'pix', 'obrigado', 'siga')
+
+# Acima disto o texto e longo demais para ser um rotulo de secao.
+LIMITE_CABECALHO = 45
+
+
+def _sem_acento(texto):
+    t = unicodedata.normalize('NFD', str(texto or '').lower())
+    return ''.join(c for c in t if unicodedata.category(c) != 'Mn')
+
+
+def classificar(token):
+    """Devolve o papel do token: img, nome, sep, esgotado ou outro."""
+    if token['tipo'] == 'img':
+        alvo = token['valor'].lower()
+        return 'outro' if alvo.endswith(IMAGENS_DESCARTADAS) else 'img'
+
+    bruto = (token['valor'] or '').strip()
+    if len(bruto) < 2:
+        return 'outro'
+
+    plano = _sem_acento(bruto)
+
+    if plano.upper() == 'ESGOTADO' or plano == 'esgotado':
+        return 'esgotado'
+
+    if parse_preco(bruto):
+        return 'sep'
+
+    # Rotulos de secao sao curtos. Um nome de produto pode citar a marca no
+    # meio da descricao, entao o limite de tamanho e o que separa os dois.
+    if len(bruto) <= LIMITE_CABECALHO:
+        if any(m in plano for m in MARCAS):
+            return 'sep'
+        if any(c in plano for c in CATEGORIAS):
+            return 'sep'
+
+    if any(plano == r or plano.startswith(r) for r in RUIDO):
+        return 'sep'
+
+    return 'nome' if parse_produto(bruto)['nome'] else 'outro'
+
+
+def gerar_id(nome, tamanho, usados):
+    """Cria um id unico, minusculo e sem acento."""
+    base = _sem_acento('{} {}'.format(nome, tamanho or ''))
+    base = re.sub(r'[^a-z0-9]+', '-', base).strip('-') or 'produto'
+    candidato, n = base, 2
+    while candidato in usados:
+        candidato = '{}-{}'.format(base, n)
+        n += 1
+    usados.add(candidato)
+    return candidato
+```
+
+- [ ] **Step 4: Rodar o teste e confirmar que passa**
+
+Rodar: `python -m unittest ferramentas.testes.test_classificador -v`
+Esperado: PASS, 16 testes
+
+- [ ] **Step 5: Escrever o orquestrador**
 
 Criar `ferramentas/extrair.py`:
 
 ```python
 """Converte o catalogo Word em produtos.csv e conferir.csv."""
 import csv
+import json
 import os
-import re
 import sys
-import unicodedata
 
+from classificador import classificar, gerar_id
 from docx_leitor import ler_tokens
 from imagens import extrair_imagens
-from pareador import parear
+from pareador import casar
 from parser_preco import parse_preco
 from parser_produto import parse_produto
 
@@ -984,128 +1276,108 @@ COLUNAS = ['id', 'ativo', 'marca', 'categoria', 'nome', 'tamanho',
            'descricao', 'preco_de', 'desconto', 'preco_por', 'imagem',
            'destaque']
 
-MARCAS = ['Natura', 'O Boticario', 'Boticario', 'Avon', 'Eudora',
-          'Arabes', 'Capilar']
+
+def _secao(texto):
+    """Um rotulo de secao vira marca se citar uma marca, senao categoria."""
+    from classificador import MARCAS, _sem_acento
+    plano = _sem_acento(texto)
+    return 'marca' if any(m in plano for m in MARCAS) else 'categoria'
 
 
-def gerar_id(nome, tamanho, usados):
-    """Cria um id unico, minusculo e sem acento."""
-    base = '{} {}'.format(nome, tamanho or '')
-    base = unicodedata.normalize('NFD', base)
-    base = ''.join(c for c in base if unicodedata.category(c) != 'Mn')
-    base = re.sub(r'[^a-zA-Z0-9]+', '-', base).strip('-').lower() or 'produto'
-    candidato, n = base, 2
-    while candidato in usados:
-        candidato = '{}-{}'.format(base, n)
-        n += 1
-    usados.add(candidato)
-    return candidato
-
-
-def e_cabecalho(texto):
-    """Cabecalhos de secao sao curtos e batem com uma marca conhecida."""
-    if len(texto) > 40:
-        return False
-    return any(m.lower() in texto.lower() for m in MARCAS)
-
-
-def main(caminho_docx):
-    os.makedirs(PASTA_SAIDA, exist_ok=True)
-
-    print('Extraindo imagens...')
-    mapa_img = extrair_imagens(caminho_docx, os.path.join(PASTA_SAIDA, 'img'))
-    print('  {} imagens convertidas'.format(len(mapa_img)))
-
-    print('Lendo o documento...')
-    tokens = ler_tokens(caminho_docx)
-
-    # Primeira passada: separar as caixas que sao nome de produto. So elas
-    # entram no pareamento. `parear` consome cada imagem uma unica vez, entao
-    # um bloco de preco ou um cabecalho posicionado abaixo de uma foto
-    # roubaria a imagem do produto a que ela pertence.
-    nomes = []
-    for token in tokens:
-        if token['tipo'] != 'txt':
-            continue
-        texto = token['valor']
-        if texto.strip().upper() == 'ESGOTADO':
-            continue
-        if parse_preco(texto) or e_cabecalho(texto):
-            continue
-        if parse_produto(texto)['nome']:
-            nomes.append(token)
-
-    imagens = [t for t in tokens if t['tipo'] == 'img']
-    pares = {id(p['nome_token']): p for p in parear(imagens + nomes)}
-    print('  {} nomes de produto, {} imagens'.format(len(nomes), len(imagens)))
-
-    linhas, conferir, usados = [], [], set()
-    marca_atual, categoria_atual = '', ''
+def montar_produtos(tokens):
+    """Percorre os tokens e devolve as linhas de produto, sem imagem ainda."""
+    linhas, usados = [], set()
+    marca_atual = categoria_atual = ''
     pendentes = []
 
     for token in tokens:
-        if token['tipo'] != 'txt':
-            continue
-        texto = token['valor']
+        papel = classificar(token)
 
-        if texto.strip().upper() == 'ESGOTADO':
+        if papel == 'esgotado':
             for p in pendentes:
                 p['ativo'] = 'nao'
             continue
 
-        preco = parse_preco(texto)
-        if preco:
-            for p in pendentes:
-                p['preco_de'] = preco['preco_de'] or ''
-                p['desconto'] = preco['desconto'] or ''
-                p['preco_por'] = preco['preco_por'] or ''
-            pendentes = []
-            continue
-
-        if e_cabecalho(texto):
-            if any(m.lower() in texto.lower() for m in MARCAS):
-                marca_atual = texto.strip()
+        if papel == 'sep':
+            preco = parse_preco(token['valor'])
+            if preco:
+                for p in pendentes:
+                    p['preco_de'] = preco['preco_de'] or ''
+                    p['desconto'] = preco['desconto'] or ''
+                    p['preco_por'] = preco['preco_por'] or ''
+                pendentes = []
             else:
-                categoria_atual = texto.strip()
+                if _secao(token['valor']) == 'marca':
+                    marca_atual = token['valor'].strip()
+                else:
+                    categoria_atual = token['valor'].strip()
             continue
 
-        produto = parse_produto(texto)
-        if not produto['nome']:
+        if papel != 'nome':
             continue
 
-        par = pares.get(id(token), {})
-        arquivo = mapa_img.get(par.get('imagem') or '', '')
-
+        dados = parse_produto(token['valor'])
         linha = {
-            'id': gerar_id(produto['nome'], produto['tamanho'], usados),
+            'id': gerar_id(dados['nome'], dados['tamanho'], usados),
             'ativo': 'sim',
             'marca': marca_atual,
             'categoria': categoria_atual,
-            'nome': produto['nome'],
-            'tamanho': produto['tamanho'] or '',
-            'descricao': produto['descricao'] or '',
+            'nome': dados['nome'],
+            'tamanho': dados['tamanho'] or '',
+            'descricao': dados['descricao'] or '',
             'preco_de': '', 'desconto': '', 'preco_por': '',
-            'imagem': arquivo,
+            'imagem': '',
             'destaque': 'nao',
+            '_confianca_nome': dados['confianca'],
         }
         linhas.append(linha)
         pendentes.append(linha)
 
-        if (produto['confianca'] == 'baixa'
-                or par.get('confianca') == 'baixa' or not arquivo):
-            conferir.append({**linha, 'motivo': 'texto={} imagem={}'.format(
-                produto['confianca'], par.get('confianca', 'sem par'))})
+    return linhas
 
-    sem_preco = [l for l in linhas if not l['preco_por']]
-    for l in sem_preco:
-        if l not in conferir:
-            conferir.append({**l, 'motivo': 'sem preco'})
+
+def main(caminho_docx, caminho_legendas):
+    os.makedirs(PASTA_SAIDA, exist_ok=True)
+
+    print('Extraindo imagens...')
+    extrair_imagens(caminho_docx, os.path.join(PASTA_SAIDA, 'img'))
+
+    print('Lendo o documento...')
+    linhas = montar_produtos(ler_tokens(caminho_docx))
+    print('  {} produtos'.format(len(linhas)))
+
+    print('Casando fotos pelas legendas...')
+    with open(caminho_legendas, encoding='utf8') as f:
+        legendas = json.load(f)
+    pares = casar(linhas, legendas)
+    for linha in linhas:
+        par = pares.get(linha['id'])
+        linha['imagem'] = par['arquivo'] if par else ''
+        linha['_confianca_img'] = par['confianca'] if par else 'sem par'
+        linha['_escore'] = par['escore'] if par else ''
+
+    conferir = []
+    for linha in linhas:
+        motivos = []
+        if linha['_confianca_nome'] == 'baixa':
+            motivos.append('nome incerto')
+        if not linha['preco_por']:
+            motivos.append('sem preco')
+        if not linha['imagem']:
+            motivos.append('sem imagem')
+        elif linha['_confianca_img'] == 'baixa':
+            motivos.append('imagem incerta (escore {})'.format(linha['_escore']))
+        if motivos:
+            conferir.append({**{c: linha[c] for c in COLUNAS},
+                             'motivo': '; '.join(motivos)})
+
+    limpas = [{c: l[c] for c in COLUNAS} for l in linhas]
 
     with open(os.path.join(PASTA_SAIDA, 'produtos.csv'), 'w',
               newline='', encoding='utf-8-sig') as f:
         w = csv.DictWriter(f, fieldnames=COLUNAS)
         w.writeheader()
-        w.writerows(linhas)
+        w.writerows(limpas)
 
     with open(os.path.join(PASTA_SAIDA, 'conferir.csv'), 'w',
               newline='', encoding='utf-8-sig') as f:
@@ -1113,34 +1385,37 @@ def main(caminho_docx):
         w.writeheader()
         w.writerows(conferir)
 
-    print('\nprodutos.csv: {} linhas'.format(len(linhas)))
-    print('conferir.csv: {} linhas ({:.0f}% do total)'.format(
-        len(conferir), 100 * len(conferir) / max(len(linhas), 1)))
-    print('sem preco: {}'.format(len(sem_preco)))
-    print('sem imagem: {}'.format(sum(1 for l in linhas if not l['imagem'])))
+    com_img = sum(1 for l in limpas if l['imagem'])
+    com_preco = sum(1 for l in limpas if l['preco_por'])
+    print('\nprodutos.csv : {} linhas'.format(len(limpas)))
+    print('com imagem   : {} ({:.0f}%)'.format(
+        com_img, 100 * com_img / max(len(limpas), 1)))
+    print('com preco    : {} ({:.0f}%)'.format(
+        com_preco, 100 * com_preco / max(len(limpas), 1)))
+    print('conferir.csv : {} linhas'.format(len(conferir)))
 
 
 if __name__ == '__main__':
-    main(sys.argv[1])
+    main(sys.argv[1], sys.argv[2])
 ```
 
-- [ ] **Step 2: Rodar contra o documento real**
+- [ ] **Step 6: Rodar contra o documento real**
 
 ```bash
-python ferramentas/extrair.py "C:/Users/David/Downloads/Agosto 2026_Nosso_Elo.docx"
+python ferramentas/extrair.py "C:/Users/David/Downloads/Agosto 2026_Nosso_Elo.docx" ferramentas/saida/legendas.json
 ```
 
-Esperado: `produtos.csv` com algo entre 400 e 900 linhas. É normal `conferir.csv` conter 30% a 50% das linhas — esse arquivo é justamente a fila de revisão manual, não um defeito.
+Esperado: `produtos.csv` com algo entre 300 e 500 linhas. É normal `conferir.csv` conter uma fatia grande — esse arquivo é a fila de revisão manual, não um defeito.
 
-- [ ] **Step 3: Conferir a saída manualmente**
+- [ ] **Step 7: Conferir a saída manualmente**
 
-Abrir `ferramentas/saida/produtos.csv` no Excel e verificar dez linhas contra o PDF original. Confirmar que nome, preço e imagem batem. Se mais de três das dez estiverem erradas, ajustar `DISTANCIA_MAXIMA` em `pareador.py` ou as regras de `e_cabecalho` antes de prosseguir.
+Abrir `ferramentas/saida/produtos.csv` e verificar dez linhas contra o PDF original, conferindo nome, preço e imagem. Se mais de três das dez estiverem erradas, ajustar as listas de `classificador.py` ou o `minimo` de `casar` antes de prosseguir.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add ferramentas/extrair.py
-git commit -m "feat: orquestrador da migracao gerando produtos.csv e conferir.csv"
+git add ferramentas/classificador.py ferramentas/extrair.py ferramentas/testes/test_classificador.py
+git commit -m "feat: classificador de tokens e orquestrador da migracao"
 ```
 
 ---
