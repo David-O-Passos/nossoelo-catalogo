@@ -45,6 +45,13 @@ def montar_produtos(tokens):
                     p['preco_de'] = preco['preco_de'] or ''
                     p['desconto'] = preco['desconto'] or ''
                     p['preco_por'] = preco['preco_por'] or ''
+                    # Um bloco de preco pode listar varios percentuais e o
+                    # parser pega o primeiro. Quando os dois precos existem,
+                    # eles sao a verdade: o selo passa a ser derivado deles,
+                    # nunca do texto.
+                    if p['preco_de'] and p['preco_por']:
+                        p['desconto'] = round(
+                            100 * (1 - p['preco_por'] / p['preco_de']))
                 pendentes = []
             else:
                 if _secao(token['valor']) == 'marca':
