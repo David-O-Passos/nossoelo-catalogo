@@ -1,0 +1,9 @@
+{
+  "name": "NOSSO.ELO Catálogo",
+  "short_name": "NOSSO.ELO",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#faf7f5",
+  "theme_color": "#8c5a3c",
+  "icons": []
+}

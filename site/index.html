@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NOSSO.ELO — Catálogo</title>
+<meta name="description" content="Catálogo de perfumaria e cosméticos. Monte seu pedido e envie pelo WhatsApp.">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="css/estilo.css">
+</head>
+<body>
+<header class="topo">
+  <h1>NOSSO.ELO</h1>
+  <p class="lema">Viva uma vida perfumada</p>
+  <input id="busca" type="search" placeholder="Buscar produto, marca ou fragrância..." autocomplete="off">
+  <div class="filtros">
+    <select id="filtro-marca"><option value="">Todas as marcas</option></select>
+    <select id="filtro-categoria"><option value="">Todas as categorias</option></select>
+    <select id="ordem">
+      <option value="desconto">Maior desconto</option>
+      <option value="preco-asc">Menor preço</option>
+      <option value="preco-desc">Maior preço</option>
+      <option value="nome">Nome</option>
+    </select>
+  </div>
+</header>
+
+<div id="avisos" class="avisos" hidden></div>
+<p id="contador" class="contador"></p>
+<main id="grade" class="grade" aria-live="polite"></main>
+<p id="vazio" class="vazio" hidden>Nenhum produto encontrado.</p>
+
+<button id="abrir-carrinho" class="botao-carrinho" hidden>
+  <span id="carrinho-qtd">0</span> itens · R$ <span id="carrinho-total">0,00</span>
+</button>
+
+<dialog id="painel-carrinho">
+  <h2>Seu pedido</h2>
+  <ul id="lista-carrinho"></ul>
+  <p class="total-final">Total: R$ <span id="total-final">0,00</span></p>
+  <p id="aviso-longo" class="aviso-longo" hidden>
+    Seu pedido está grande demais para uma mensagem só. Envie em duas partes.
+  </p>
+  <a id="enviar-whatsapp" class="botao-enviar" href="#" target="_blank" rel="noopener">
+    Enviar pedido pelo WhatsApp
+  </a>
+  <button id="fechar-painel" class="botao-secundario">Continuar comprando</button>
+</dialog>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
