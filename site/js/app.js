@@ -88,10 +88,10 @@ const MARCAS = ['Natura', 'O Boticário', 'Avon', 'Eudora', 'Lattafa'];
 
 function marcaLimpa(rotulo) {
   const plano = String(rotulo || '').normalize('NFD')
-    .replace(/[̀-ͯ]/g, '').toLowerCase();
+    .replace(/[\u0300-\u036f]/g, '').toLowerCase();
   for (const marca of MARCAS) {
     const chave = marca.replace(/^o /i, '').normalize('NFD')
-      .replace(/[̀-ͯ]/g, '').toLowerCase();
+      .replace(/[\u0300-\u036f]/g, '').toLowerCase();
     if (plano.includes(chave)) return marca;
   }
   return '';

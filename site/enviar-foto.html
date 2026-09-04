@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title>Enviar foto — NOSSO.ELO</title>
+<link rel="icon" href="icone.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/estilo.css">
 </head>
 <body>
@@ -48,6 +49,20 @@ $('#enviar').addEventListener('click', async () => {
   }
 
   $('#status').textContent = 'Enviando...';
+
+  let conteudoBase64;
+  try {
+    conteudoBase64 = await paraWebp(file);
+  } catch {
+    // createImageBitmap ou canvas.toBlob falharam: o arquivo escolhido nao
+    // e uma imagem que o navegador consegue abrir. Isso nao tem nada a ver
+    // com internet, entao nao pode cair na mensagem generica de rede.
+    $('#status').textContent =
+      'Não consegui ler esse arquivo como imagem. Tente outra foto '
+      + '(JPG ou PNG costuma funcionar).';
+    return;
+  }
+
   try {
     const resposta = await fetch('/api/upload', {
       method: 'POST',
@@ -55,17 +70,17 @@ $('#enviar').addEventListener('click', async () => {
       body: JSON.stringify({
         senha: $('#senha').value,
         nome: nomeBase + '.webp',
-        conteudoBase64: await paraWebp(file),
+        conteudoBase64,
       }),
     });
     const r = await resposta.json();
     $('#status').textContent = r.ok
       ? `Pronto! Escreva "${r.arquivo}" na coluna imagem da planilha. A foto aparece no site em cerca de 1 minuto.`
       : 'Erro: ' + r.erro;
-  } catch (e) {
+  } catch {
     $('#status').textContent =
       'Não consegui enviar a foto. Confira sua internet e tente de novo. '
-      + 'Se continuar, avise o David. (detalhe técnico: ' + e.message + ')';
+      + 'Se continuar, avise o David.';
   }
 });
 </script>

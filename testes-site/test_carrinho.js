@@ -89,8 +89,15 @@ test('o link aponta para o numero configurado e vem codificado', () => {
   const c = new Carrinho(memoria());
   c.adicionar(kaiak);
   const link = c.linkWhatsApp();
-  assert.ok(link.startsWith('https://wa.me/5573981139437?text='));
-  assert.ok(!link.includes('\n'));
+  const prefixo = 'https://wa.me/5573981139437?text=';
+  assert.ok(link.startsWith(prefixo));
+  const textoCodificado = link.slice(prefixo.length);
+  // '!link.includes("\n")' seria verdade mesmo sem nenhuma codificacao real
+  // (bastaria a mensagem nunca ter quebra de linha). Aqui confirmamos que a
+  // quebra de linha da mensagem foi de fato transformada em %0A e que o
+  // texto decodificado volta a ser exatamente a mensagem original.
+  assert.ok(textoCodificado.includes('%0A'));
+  assert.equal(decodeURIComponent(textoCodificado), c.montarMensagem());
 });
 
 test('mensagemLonga acusa quando passa do limite', () => {

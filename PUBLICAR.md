@@ -87,7 +87,7 @@ print(f'{copiadas} fotos copiadas de {len(usadas)} referenciadas')
 Depois gere o índice que a página de conferência usa para achar fotos órfãs:
 
 ```bash
-node -e "const fs=require('node:fs');fs.writeFileSync('site/img/lista.json',JSON.stringify(fs.readdirSync('site/img').filter(n=>n.endsWith('.webp'))));console.log('lista.json pronto')"
+node -e "const fs=require('node:fs');fs.writeFileSync('site/img/lista.json',JSON.stringify(fs.readdirSync('site/img').filter(n=>n.endsWith('.webp')&&n!=='placeholder.webp')));console.log('lista.json pronto')"
 ```
 
 E o backup que mantém o site no ar se o Google cair:

@@ -42,9 +42,16 @@ class TestParseProduto(unittest.TestCase):
         self.assertIsNone(r['descricao'])
 
     def test_texto_ambiguo_marca_confianca_baixa(self):
-        r = parse_produto('ALRA ALBAO mais puro oleo natural da Rosa Alba')
+        texto = 'ALRA ALBAO mais puro oleo natural da Rosa Alba'
+        r = parse_produto(texto)
         self.assertEqual(r['confianca'], 'baixa')
-        self.assertTrue(len(r['nome']) > 0)
+        # Sem tamanho e sem transicao de caixa para separar nome e descricao,
+        # o parser cai no fallback: devolve o texto inteiro como nome e nao
+        # inventa uma descricao. `len(nome) > 0` passaria mesmo se o fallback
+        # tivesse sumido e outra logica retornasse qualquer coisa nao vazia;
+        # aqui fixamos o valor exato que o fallback deve produzir.
+        self.assertEqual(r['nome'], texto)
+        self.assertIsNone(r['descricao'])
 
     def test_espacos_extras_sao_normalizados(self):
         r = parse_produto('  KAIAK   AERO  100 ml   Aromatico  ')

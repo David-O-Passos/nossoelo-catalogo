@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title>Conferir planilha — NOSSO.ELO</title>
+<link rel="icon" href="icone.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/estilo.css">
 </head>
 <body>
@@ -18,6 +19,15 @@
 import { parseCSV } from './js/csv.js';
 import { analisar } from './js/validador.js';
 import { URL_PLANILHA } from './js/config.js';
+
+/** Escapa texto vindo da planilha antes de ir para innerHTML. */
+function escapar(texto) {
+  return String(texto ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
+}
 
 document.querySelector('#conferir').addEventListener('click', async () => {
   const saida = document.querySelector('#saida');
@@ -59,8 +69,8 @@ document.querySelector('#conferir').addEventListener('click', async () => {
     }
 
     const r = analisar(linhas, [...new Set([...existentes, ...doManifesto])]);
-    const erros = r.erros.map((e) => `<li>Linha ${e.linha}: ${e.motivo}</li>`).join('');
-    const avisos = r.avisos.slice(0, 50).map((a) => `<li>${a}</li>`).join('');
+    const erros = r.erros.map((e) => `<li>Linha ${e.linha}: ${escapar(e.motivo)}</li>`).join('');
+    const avisos = r.avisos.slice(0, 50).map((a) => `<li>${escapar(a)}</li>`).join('');
     saida.innerHTML = `
       <p><strong>${r.resumo.total}</strong> linhas ·
          <strong>${r.resumo.ativos}</strong> à venda ·
