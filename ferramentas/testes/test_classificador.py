@@ -60,6 +60,26 @@ class TestClassificar(unittest.TestCase):
         self.assertEqual(
             classificar(txt('30,00 (120g) 35,00 (200g)')), 'outro')
 
+    def test_texto_com_rs_e_descartado(self):
+        self.assertEqual(classificar(txt("R$ 80,00 cada")), 'outro')
+
+    def test_texto_com_preco_no_meio_e_descartado(self):
+        self.assertEqual(classificar(txt('Shampoo: R$ 20,00')), 'outro')
+
+    def test_apenas_numero_e_descartado(self):
+        self.assertEqual(classificar(txt('214')), 'outro')
+
+    def test_paragrafo_longo_e_descartado(self):
+        texto = 'Beneficios:' + 'Hidratacao profunda e duradoura. ' * 20
+        self.assertGreater(len(texto), 90)
+        self.assertEqual(classificar(txt(texto)), 'outro')
+
+    def test_nome_com_dois_pontos_nao_e_descartado_por_causa_disso(self):
+        # ':' sozinho nao pode derrubar um nome legitimo de kit/produto.
+        self.assertEqual(
+            classificar(txt('Discreto: para trabalhar ou ir ao parque')),
+            'nome')
+
 
 class TestGerarId(unittest.TestCase):
 

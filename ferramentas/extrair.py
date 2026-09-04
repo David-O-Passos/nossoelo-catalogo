@@ -66,7 +66,7 @@ def montar_produtos(tokens):
         dados = parse_produto(token['valor'])
         linha = {
             'id': gerar_id(dados['nome'], dados['tamanho'], usados),
-            'ativo': 'sim',
+            'ativo': 'sim' if dados['confianca'] == 'alta' else 'nao',
             'marca': marca_atual,
             'categoria': categoria_atual,
             'nome': dados['nome'],

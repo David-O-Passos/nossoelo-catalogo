@@ -63,6 +63,16 @@ def classificar(token):
     if sum(1 for c in bruto if c.isalpha()) <= 2:
         return 'outro'
 
+    # Um nome de produto nao carrega preco, nao e so um numero, e nao tem o
+    # tamanho de um paragrafo. Isto e texto solto da pagina que o Word
+    # deixou numa caixa de texto propria.
+    if 'R$' in bruto or re.search(r'\bRS\s*\d', bruto):
+        return 'outro'
+    if bruto.strip().isdigit():
+        return 'outro'
+    if len(bruto) > 90:
+        return 'outro'
+
     return 'nome' if parse_produto(bruto)['nome'] else 'outro'
 
 
