@@ -23,6 +23,14 @@ MARCAS_CONHECIDAS = ('natura', 'boticario', 'avon', 'eudora', 'lattafa',
 
 ESCORE_ALTO = 0.6
 
+# Contencao exige ao menos este numero de palavras no conjunto menor. Com 1,
+# "Kaiak" casaria com "Kaiak Aero", que e outro produto.
+MINIMO_CONTENCAO = 2
+
+# Contencao vale menos que um casamento exato de proposito: assim um par
+# exato sempre vence um par contido na hora de disputar a mesma foto.
+ESCORE_CONTENCAO = 0.9
+
 
 def normalizar(texto):
     """Minusculas, sem acento, sem pontuacao, espacos colapsados."""
@@ -39,11 +47,24 @@ def palavras(texto):
 
 
 def similaridade(a, b):
-    """Indice de Jaccard entre os conjuntos de palavras. 0 quando nao ha uniao."""
+    """Quanto dois nomes se parecem, de 0 a 1.
+
+    Usa Jaccard, mas trata a parte tambem o caso em que um nome esta
+    inteiramente contido no outro: o catalogo escreve "DEO PARFUM ESSENCIAL
+    OUD FEMININO" onde a legenda da foto diz apenas "Essencial Oud", e
+    Jaccard sozinho descartaria esse par por diferenca de tamanho.
+    """
     pa, pb = palavras(a), palavras(b)
     if not pa or not pb:
         return 0.0
-    return len(pa & pb) / len(pa | pb)
+
+    comuns = len(pa & pb)
+    jaccard = comuns / len(pa | pb)
+
+    menor = min(len(pa), len(pb))
+    if comuns == menor and menor >= MINIMO_CONTENCAO:
+        return max(jaccard, ESCORE_CONTENCAO)
+    return jaccard
 
 
 def _rotulo(legenda):

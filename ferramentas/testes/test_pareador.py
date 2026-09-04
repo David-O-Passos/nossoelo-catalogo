@@ -50,6 +50,20 @@ class TestSimilaridade(unittest.TestCase):
     def test_e_simetrica(self):
         self.assertEqual(similaridade('a bola', 'bola a'), similaridade('bola a', 'a bola'))
 
+    def test_nome_contido_no_outro_pontua_alto(self):
+        s = similaridade('DEO PARFUM ESSENCIAL OUD FEMININO', 'Essencial Oud')
+        self.assertEqual(s, 0.9)
+
+    def test_contencao_perde_para_casamento_exato(self):
+        exato = similaridade('Kaiak Aero', 'Kaiak Aero')
+        contido = similaridade('Kaiak Aero Masculino', 'Kaiak Aero')
+        self.assertEqual(exato, 1.0)
+        self.assertLess(contido, exato)
+
+    def test_contencao_de_uma_palavra_so_nao_conta(self):
+        # "Kaiak" dentro de "Kaiak Aero" e outro produto, nao o mesmo.
+        self.assertLess(similaridade('Kaiak', 'Kaiak Aero'), 0.9)
+
 
 class TestCasar(unittest.TestCase):
 
@@ -85,8 +99,10 @@ class TestCasar(unittest.TestCase):
         self.assertEqual(r['p1']['confianca'], 'baixa')
 
     def test_escore_apertado_rebaixa_o_par(self):
-        r = casar([produto('p1', 'Deo Parfum Essencial Unico Feminino')],
-                  [legenda('a.webp', 'Essencial Unico')])
+        # Sobreposicao parcial de verdade: duas variantes distintas da mesma
+        # linha compartilham duas palavras mas nenhuma contem a outra.
+        r = casar([produto('p1', 'Shampoo Siage Cachos')],
+                  [legenda('a.webp', 'Shampoo Siage Lisos')])
         self.assertEqual(r['p1']['confianca'], 'baixa')
 
     def test_o_melhor_par_global_vence_a_ordem_da_lista(self):
