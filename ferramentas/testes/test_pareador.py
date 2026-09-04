@@ -1,17 +1,19 @@
 import unittest
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from pareador import normalizar, palavras, similaridade, casar
+from pareador import (normalizar, palavras, similaridade, casar,
+                       marca_canonica, marcas_compativeis)
 
 
-def legenda(arquivo, produto, texto='', tipo='produto', confianca='alta'):
+def legenda(arquivo, produto, texto='', tipo='produto', confianca='alta',
+            marca=''):
     return {'arquivo': arquivo, 'tipo': tipo, 'produto': produto,
-            'texto_visivel': texto or produto, 'marca': '',
+            'texto_visivel': texto or produto, 'marca': marca,
             'descricao_visual': '', 'confianca': confianca, 'multiplos': False}
 
 
-def produto(pid, nome):
-    return {'id': pid, 'nome': nome, 'marca': '', 'tamanho': ''}
+def produto(pid, nome, marca=''):
+    return {'id': pid, 'nome': nome, 'marca': marca, 'tamanho': ''}
 
 
 class TestNormalizar(unittest.TestCase):
@@ -102,6 +104,43 @@ class TestCasar(unittest.TestCase):
         l = legenda('a.webp', '', texto='KAIAK AERO')
         r = casar([produto('p1', 'Kaiak Aero')], [l])
         self.assertEqual(r['p1']['arquivo'], 'a.webp')
+
+
+class TestMarca(unittest.TestCase):
+
+    def test_extrai_marca_de_rotulo_sujo(self):
+        self.assertEqual(marca_canonica('Natura VÊVÊ'), 'natura')
+        self.assertEqual(marca_canonica('Eudora H Ready 100ml'), 'eudora')
+        self.assertEqual(marca_canonica('Batom Ultra AVON – ULTRAMATTE'), 'avon')
+
+    def test_o_boticario_e_boticario_sao_a_mesma_marca(self):
+        self.assertEqual(marca_canonica('O Boticário'), marca_canonica('Boticário'))
+
+    def test_rotulo_sem_marca_conhecida_da_vazio(self):
+        self.assertEqual(marca_canonica('Perfumaria Feminina'), '')
+        self.assertEqual(marca_canonica(''), '')
+
+    def test_marcas_diferentes_nao_casam(self):
+        p = {'id': 'p1', 'nome': 'Hidratante Corporal', 'tamanho': '',
+             'marca': 'Natura VÊVÊ'}
+        l = {'arquivo': 'a.webp', 'tipo': 'produto',
+             'produto': 'Hidratante Corporal', 'texto_visivel': '',
+             'marca': 'O Boticário', 'confianca': 'alta'}
+        self.assertNotIn('p1', casar([p], [l]))
+
+    def test_mesma_marca_com_rotulo_sujo_casa(self):
+        p = {'id': 'p1', 'nome': 'Hidratante Corporal', 'tamanho': '',
+             'marca': 'Natura VÊVÊ'}
+        l = {'arquivo': 'a.webp', 'tipo': 'produto',
+             'produto': 'Hidratante Corporal', 'texto_visivel': '',
+             'marca': 'Natura', 'confianca': 'alta'}
+        self.assertEqual(casar([p], [l])['p1']['arquivo'], 'a.webp')
+
+    def test_marca_desconhecida_de_um_lado_nao_bloqueia(self):
+        p = {'id': 'p1', 'nome': 'Kaiak Aero', 'tamanho': '', 'marca': ''}
+        l = {'arquivo': 'a.webp', 'tipo': 'produto', 'produto': 'Kaiak Aero',
+             'texto_visivel': '', 'marca': 'Natura', 'confianca': 'alta'}
+        self.assertEqual(casar([p], [l])['p1']['arquivo'], 'a.webp')
 
 
 if __name__ == '__main__':

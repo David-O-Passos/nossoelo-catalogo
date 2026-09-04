@@ -15,6 +15,12 @@ VAZIAS = {
     'perfume', 'perfumaria', 'linha', 'produto', 'refil', 'cada',
 }
 
+# Marcas do catalogo. O rotulo de marca do lado do produto vem de cabecalhos
+# do Word e chega sujo ("Natura VEVE", "Eudora H Ready 100ml"), entao
+# comparamos so a marca canonica que aparece dentro dele.
+MARCAS_CONHECIDAS = ('natura', 'boticario', 'avon', 'eudora', 'lattafa',
+                     'amaran', 'manasik')
+
 ESCORE_ALTO = 0.6
 
 
@@ -45,6 +51,27 @@ def _rotulo(legenda):
     return legenda.get('produto') or legenda.get('texto_visivel') or ''
 
 
+def marca_canonica(texto):
+    """Reduz um rotulo de marca a uma marca conhecida, ou '' se nao houver."""
+    plano = normalizar(texto)
+    for marca in MARCAS_CONHECIDAS:
+        if marca in plano:
+            return marca
+    return ''
+
+
+def marcas_compativeis(produto, legenda):
+    """Falso apenas quando as duas marcas sao conhecidas e diferentes.
+
+    Marca desconhecida de um dos lados nunca bloqueia o par: 85 das 747
+    legendas nao trazem marca, e barrar esses casos custaria mais acertos
+    do que evitaria erros.
+    """
+    a = marca_canonica(produto.get('marca', ''))
+    b = marca_canonica(legenda.get('marca', ''))
+    return not (a and b and a != b)
+
+
 def casar(produtos, legendas, minimo=0.34):
     """Casa produtos com legendas, do par mais forte para o mais fraco.
 
@@ -57,6 +84,8 @@ def casar(produtos, legendas, minimo=0.34):
     for p in produtos:
         alvo = ' '.join(filter(None, [p.get('nome', ''), p.get('tamanho', '')]))
         for l in candidatas:
+            if not marcas_compativeis(p, l):
+                continue
             escore = similaridade(alvo, _rotulo(l))
             if escore >= minimo:
                 pontuados.append((escore, p['id'], l))
