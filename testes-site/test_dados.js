@@ -110,3 +110,23 @@ test('cai para o backup quando nao ha rede nem cache', async () => {
   });
   assert.equal(produtos[0].nome, 'Backup');
 });
+
+test('cache malformado nao derruba o carregamento', async () => {
+  const storage = memoria({ nossoelo_cache_v1: JSON.stringify({ quando: 0 }) });
+  const produtos = await carregarProdutos({
+    fetch: async () => { throw new Error('offline'); },
+    storage, agora: () => 1, urlPlanilha: 'http://p',
+    backup: [{ id: 'b', nome: 'Backup', ativo: true, precoPor: 9 }],
+  });
+  assert.equal(produtos[0].nome, 'Backup');
+});
+
+test('cache fresco com produtos invalido cai para a rede', async () => {
+  const storage = memoria({ nossoelo_cache_v1: JSON.stringify({ quando: 1000, produtos: 'nao e array' }) });
+  const produtos = await carregarProdutos({
+    fetch: async () => ({ ok: true, text: async () => 'id,ativo,nome,preco_por\nx,sim,Kaiak,"110,00"' }),
+    storage, agora: () => 1000, urlPlanilha: 'http://p', backup: [],
+  });
+  assert.equal(produtos.length, 1);
+  assert.equal(produtos[0].nome, 'Kaiak');
+});

@@ -75,7 +75,9 @@ export async function carregarProdutos(deps = {}) {
     if (bruto) cache = JSON.parse(bruto);
   } catch { cache = null; }
 
-  if (cache && agora() - cache.quando < CACHE_MS) return cache.produtos;
+  if (cache && Array.isArray(cache.produtos) && agora() - cache.quando < CACHE_MS) {
+    return cache.produtos;
+  }
 
   try {
     const resposta = await buscar(urlPlanilha);
@@ -87,7 +89,9 @@ export async function carregarProdutos(deps = {}) {
     } catch { /* cota cheia: seguir sem cache */ }
     return produtos;
   } catch {
-    if (cache && cache.produtos.length) return cache.produtos;
+    if (cache && Array.isArray(cache.produtos) && cache.produtos.length) {
+      return cache.produtos;
+    }
     return backup;
   }
 }
