@@ -2,49 +2,71 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#6d2e46">
 <title>NOSSO.ELO — Catálogo</title>
 <meta name="description" content="Catálogo de perfumaria e cosméticos. Monte seu pedido e envie pelo WhatsApp.">
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="css/estilo.css">
 </head>
 <body>
+
 <header class="topo">
-  <h1>NOSSO.ELO</h1>
-  <p class="lema">Viva uma vida perfumada</p>
-  <input id="busca" type="search" placeholder="Buscar produto, marca ou fragrância..." autocomplete="off">
-  <div class="filtros">
-    <select id="filtro-marca"><option value="">Todas as marcas</option></select>
-    <select id="filtro-categoria"><option value="">Todas as categorias</option></select>
+  <div class="marca">
+    <h1>Nosso<span>.</span>Elo</h1>
+    <p class="lema">Perfumaria &amp; cosméticos</p>
+  </div>
+
+  <div class="busca-caixa">
+    <svg class="lupa" viewBox="0 0 20 20" aria-hidden="true">
+      <circle cx="9" cy="9" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
+      <path d="M13.5 13.5 18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <input id="busca" type="search" placeholder="Buscar perfume, marca, fragrância"
+           autocomplete="off" aria-label="Buscar no catálogo">
+  </div>
+
+  <nav id="chips" class="chips" aria-label="Filtrar por marca"></nav>
+</header>
+
+<div id="avisos" class="avisos" hidden></div>
+
+<div class="barra-resultado">
+  <p id="contador" class="contador"></p>
+  <label class="ordenar">
+    <span class="sr-only">Ordenar por</span>
     <select id="ordem">
       <option value="desconto">Maior desconto</option>
       <option value="preco-asc">Menor preço</option>
       <option value="preco-desc">Maior preço</option>
       <option value="nome">Nome</option>
     </select>
-  </div>
-</header>
+  </label>
+</div>
 
-<div id="avisos" class="avisos" hidden></div>
-<p id="contador" class="contador"></p>
 <main id="grade" class="grade" aria-live="polite"></main>
-<p id="vazio" class="vazio" hidden>Nenhum produto encontrado.</p>
+<p id="vazio" class="vazio" hidden>Nenhum produto encontrado. Tente outra palavra.</p>
 
 <button id="abrir-carrinho" class="botao-carrinho" hidden>
-  <span id="carrinho-qtd">0</span> itens · R$ <span id="carrinho-total">0,00</span>
+  <span class="zap-icone" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-1.7-.1a12 12 0 0 1-4.6-3.4c-.9-1.1-1.5-2.4-1.5-3.1 0-.7.4-1.4.9-1.7.2-.1.4-.2.6-.2h.4c.2 0 .3 0 .5.4l.7 1.7c.1.2 0 .4-.1.5l-.3.4c-.1.1-.2.3-.1.5a7.4 7.4 0 0 0 3.4 2.9c.2.1.4 0 .5-.1l.6-.7c.1-.2.3-.2.5-.1l1.6.8c.3.1.4.3.4.4v.6Z"/></svg>
+  </span>
+  <span id="carrinho-qtd">0</span> itens
+  <span class="ponto">·</span>
+  R$ <span id="carrinho-total">0,00</span>
 </button>
 
-<dialog id="painel-carrinho">
-  <h2>Seu pedido</h2>
+<dialog id="painel-carrinho" aria-labelledby="titulo-pedido">
+  <h2 id="titulo-pedido">Seu pedido</h2>
   <ul id="lista-carrinho"></ul>
-  <p class="total-final">Total: R$ <span id="total-final">0,00</span></p>
+  <p class="total-final">Total <strong>R$ <span id="total-final">0,00</span></strong></p>
   <p id="aviso-longo" class="aviso-longo" hidden>
-    Seu pedido está grande demais para uma mensagem só. Envie em duas partes.
+    Seu pedido ficou grande para uma mensagem só. Envie em duas partes.
   </p>
   <a id="enviar-whatsapp" class="botao-enviar" href="#" target="_blank" rel="noopener">
     Enviar pedido pelo WhatsApp
   </a>
-  <button id="fechar-painel" class="botao-secundario">Continuar comprando</button>
+  <button id="fechar-painel" class="botao-secundario">Continuar escolhendo</button>
 </dialog>
 
 <script type="module" src="js/app.js"></script>

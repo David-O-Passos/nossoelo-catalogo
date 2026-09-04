@@ -1,53 +1,131 @@
 import { carregarProdutos } from './dados.js';
 import { Carrinho, reais } from './carrinho.js';
-import { buscar, filtrar, ordenar } from './catalogo.js';
+import { buscar, ordenar } from './catalogo.js';
 
 const $ = (s) => document.querySelector(s);
 const carrinho = new Carrinho();
-let todos = [];
 
-function preencherSelect(sel, valores) {
-  for (const v of [...new Set(valores)].filter(Boolean).sort()) {
-    const o = document.createElement('option');
-    o.value = v; o.textContent = v;
-    sel.appendChild(o);
-  }
+let todos = [];
+let marcaAtiva = '';
+
+/** Escapa texto vindo da planilha antes de ir para innerHTML. */
+function escapar(texto) {
+  return String(texto ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
+}
+
+/** Tira sobras da conversao do Word: hifen ou ponto solto no fim do nome. */
+function limparNome(nome) {
+  return String(nome || '').replace(/[\s\-–—.,;:]+$/, '').trim();
 }
 
 function cartao(p) {
   const el = document.createElement('article');
   el.className = 'produto';
-  const selo = p.desconto ? `<span class="selo">${p.desconto}% OFF</span>` : '';
-  const de = p.precoDe ? `<div class="preco-de">De R$ ${reais(p.precoDe)}</div>` : '';
-  const src = p.imagem ? `img/${p.imagem}` : 'img/placeholder.webp';
+
+  const nome = escapar(limparNome(p.nome));
+  const src = p.imagem ? `img/${encodeURIComponent(p.imagem)}` : 'img/placeholder.webp';
+  const selo = p.desconto ? `<span class="selo">-${p.desconto}%</span>` : '';
+  const de = p.precoDe && p.precoDe > p.precoPor
+    ? `<div class="preco-de">R$ ${reais(p.precoDe)}</div>` : '';
+
   el.innerHTML = `
-    <img src="${src}" alt="${p.nome}" loading="lazy"
-         onerror="this.src='img/placeholder.webp'">
-    <h3>${p.nome}</h3>
-    ${p.tamanho ? `<p class="tamanho">${p.tamanho}</p>` : ''}
-    ${p.descricao ? `<p class="descricao">${p.descricao}</p>` : ''}
-    ${de}
-    <div class="preco-por">R$ ${reais(p.precoPor)}${selo}</div>
-    <button type="button">Adicionar</button>`;
-  el.querySelector('button').addEventListener('click', () => {
-    carrinho.adicionar(p);
-    atualizarBotaoCarrinho();
+    <div class="moldura">
+      ${selo}
+      <img src="${src}" alt="${nome}" loading="lazy" decoding="async">
+    </div>
+    <div class="corpo">
+      <h3>${nome}</h3>
+      ${p.tamanho ? `<p class="tamanho">${escapar(p.tamanho)}</p>` : ''}
+      <div class="precos">
+        <div>
+          ${de}
+          <div class="preco-por">R$ ${reais(p.precoPor)}</div>
+        </div>
+        <button class="somar" type="button" aria-label="Adicionar ${nome} ao pedido">+</button>
+      </div>
+    </div>`;
+
+  el.querySelector('img').addEventListener('error', (e) => {
+    e.target.src = 'img/placeholder.webp';
   });
+
+  const botao = el.querySelector('.somar');
+  botao.addEventListener('click', () => {
+    // Guarda o nome ja limpo: ele vai literal para a mensagem do WhatsApp,
+    // onde um hifen solto no fim ("Kaiak -") ficaria visivel para o cliente.
+    carrinho.adicionar({ ...p, nome: limparNome(p.nome) });
+    atualizarBotaoCarrinho();
+    // Confirmacao curta no proprio botao: no celular o carrinho fica longe
+    // do polegar e o cliente precisa saber que o toque valeu.
+    botao.textContent = '✓';
+    botao.classList.add('feito');
+    setTimeout(() => {
+      botao.textContent = '+';
+      botao.classList.remove('feito');
+    }, 700);
+  });
+
   return el;
 }
 
-function render() {
-  const lista = ordenar(
-    filtrar(buscar(todos, $('#busca').value), {
-      marca: $('#filtro-marca').value,
-      categoria: $('#filtro-categoria').value,
-    }),
-    $('#ordem').value);
+// O rotulo de marca vem de cabecalhos do Word e chega sujo ("Eudora H Ready
+// 100ml", "Natura VEVE"). Reduzimos ao nome da marca que aparece dentro dele.
+const MARCAS = ['Natura', 'O Boticário', 'Avon', 'Eudora', 'Lattafa'];
 
-  const grade = $('#grade');
-  grade.replaceChildren(...lista.map(cartao));
+function marcaLimpa(rotulo) {
+  const plano = String(rotulo || '').normalize('NFD')
+    .replace(/[̀-ͯ]/g, '').toLowerCase();
+  for (const marca of MARCAS) {
+    const chave = marca.replace(/^o /i, '').normalize('NFD')
+      .replace(/[̀-ͯ]/g, '').toLowerCase();
+    if (plano.includes(chave)) return marca;
+  }
+  return '';
+}
+
+function montarChips() {
+  const marcas = [...new Set(todos.map((p) => marcaLimpa(p.marca)).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+  const nav = $('#chips');
+  nav.replaceChildren();
+
+  for (const [valor, rotulo] of [['', 'Tudo'], ...marcas.map((m) => [m, m])]) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip';
+    b.textContent = rotulo;
+    b.setAttribute('aria-pressed', String(valor === marcaAtiva));
+    b.addEventListener('click', () => {
+      marcaAtiva = valor;
+      for (const outro of nav.children) outro.setAttribute('aria-pressed', 'false');
+      b.setAttribute('aria-pressed', 'true');
+      render();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    nav.appendChild(b);
+  }
+}
+
+function render() {
+  const visiveis = marcaAtiva
+    ? todos.filter((p) => marcaLimpa(p.marca) === marcaAtiva)
+    : todos;
+
+  const lista = ordenar(buscar(visiveis, $('#busca').value), $('#ordem').value)
+    // Produto com foto vem primeiro. Array.sort e estavel, entao a ordem
+    // escolhida pelo cliente e preservada dentro de cada grupo. Sem isto a
+    // primeira tela do celular enche de quadro cinza e o catalogo parece vazio.
+    .sort((a, b) => (a.imagem ? 0 : 1) - (b.imagem ? 0 : 1));
+
+  $('#grade').replaceChildren(...lista.map(cartao));
   $('#vazio').hidden = lista.length > 0;
-  $('#contador').textContent = `${lista.length} produto(s)`;
+  $('#contador').textContent = lista.length === 1
+    ? '1 produto' : `${lista.length} produtos`;
 }
 
 function atualizarBotaoCarrinho() {
@@ -60,23 +138,30 @@ function atualizarBotaoCarrinho() {
 function renderCarrinho() {
   const ul = $('#lista-carrinho');
   ul.replaceChildren();
+
   for (const item of carrinho.itens()) {
     const li = document.createElement('li');
+    const nome = escapar([limparNome(item.nome), item.tamanho].filter(Boolean).join(' '));
     li.innerHTML = `
-      <span class="nome">${item.nome} ${item.tamanho}</span>
-      <input type="number" min="0" value="${item.quantidade}">
-      <span>R$ ${reais(item.precoPor * item.quantidade)}</span>
-      <button type="button" aria-label="Remover">&times;</button>`;
+      <span class="nome">${nome}</span>
+      <input type="number" min="0" inputmode="numeric" value="${item.quantidade}"
+             aria-label="Quantidade de ${nome}">
+      <span class="valor">R$ ${reais(item.precoPor * item.quantidade)}</span>
+      <button class="tirar" type="button" aria-label="Remover ${nome}">&times;</button>`;
+
     li.querySelector('input').addEventListener('change', (e) => {
       carrinho.definirQuantidade(item.id, parseInt(e.target.value, 10) || 0);
-      renderCarrinho(); atualizarBotaoCarrinho();
+      renderCarrinho();
+      atualizarBotaoCarrinho();
     });
-    li.querySelector('button').addEventListener('click', () => {
+    li.querySelector('.tirar').addEventListener('click', () => {
       carrinho.remover(item.id);
-      renderCarrinho(); atualizarBotaoCarrinho();
+      renderCarrinho();
+      atualizarBotaoCarrinho();
     });
     ul.appendChild(li);
   }
+
   $('#total-final').textContent = reais(carrinho.total());
   $('#aviso-longo').hidden = !carrinho.mensagemLonga();
   $('#enviar-whatsapp').href = carrinho.linkWhatsApp();
@@ -96,21 +181,21 @@ async function iniciar() {
     $('#avisos').textContent = avisos.join(' ');
   }
 
-  preencherSelect($('#filtro-marca'), todos.map((p) => p.marca));
-  preencherSelect($('#filtro-categoria'), todos.map((p) => p.categoria));
+  montarChips();
 
-  for (const s of ['#busca', '#filtro-marca', '#filtro-categoria', '#ordem']) {
-    $(s).addEventListener('input', render);
-  }
+  $('#busca').addEventListener('input', render);
+  $('#ordem').addEventListener('change', render);
+
   $('#abrir-carrinho').addEventListener('click', () => {
-    renderCarrinho(); $('#painel-carrinho').showModal();
+    renderCarrinho();
+    $('#painel-carrinho').showModal();
   });
   $('#fechar-painel').addEventListener('click', () => $('#painel-carrinho').close());
 
   const alvo = new URLSearchParams(location.search).get('p');
   if (alvo) {
     const p = todos.find((x) => x.id === alvo);
-    if (p) $('#busca').value = p.nome;
+    if (p) $('#busca').value = limparNome(p.nome);
   }
 
   render();

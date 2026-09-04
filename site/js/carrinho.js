@@ -86,12 +86,12 @@ export class Carrinho {
   }
 
   montarMensagem() {
-    if (!this._itens.length) return 'Ola! Gostaria de fazer um pedido.';
+    if (!this._itens.length) return 'Olá! Gostaria de fazer um pedido.';
     const linhas = this._itens.map((i) => {
       const nome = [i.nome, i.tamanho].filter(Boolean).join(' ');
       return `${i.quantidade}x ${nome} — R$ ${reais(i.precoPor * i.quantidade)}`;
     });
-    return `Ola! Quero fazer um pedido:\n\n${linhas.join('\n')}\n\nTotal: R$ ${reais(this.total())}`;
+    return `Olá! Quero fazer um pedido:\n\n${linhas.join('\n')}\n\nTotal: R$ ${reais(this.total())}`;
   }
 
   mensagemLonga() {
