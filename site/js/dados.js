@@ -1,10 +1,29 @@
 import { parseCSV } from './csv.js';
 import { CACHE_MS, CHAVE_CACHE, URL_PLANILHA } from './config.js';
 
-/** '189,90' -> 189.9; vazio ou invalido -> null. */
+/** Aceita "189,90", "1.299,90", "75.0" e "110". Devolve null se nao for numero.
+ *
+ * O separador decimal depende do idioma da planilha publicada, e ninguem vai
+ * lembrar de conferir isso. Ler os dois formatos evita um preco 10x errado
+ * numa loja no ar — que na tela pareceria perfeitamente normal.
+ */
 function numero(texto) {
-  if (!texto) return null;
-  const n = parseFloat(String(texto).replace(/\./g, '').replace(',', '.'));
+  const bruto = String(texto ?? '').trim();
+  if (!bruto) return null;
+
+  let limpo;
+  if (bruto.includes(',')) {
+    // Virgula presente: ela e o decimal e o ponto e separador de milhar.
+    limpo = bruto.replace(/\./g, '').replace(',', '.');
+  } else if (/\.\d{3}(\D|$)/.test(bruto) || (bruto.match(/\./g) || []).length > 1) {
+    // Ponto seguido de exatamente tres digitos, ou varios pontos: milhar.
+    limpo = bruto.replace(/\./g, '');
+  } else {
+    // Ponto unico com um ou dois digitos depois: decimal.
+    limpo = bruto;
+  }
+
+  const n = parseFloat(limpo);
   return Number.isFinite(n) ? n : null;
 }
 

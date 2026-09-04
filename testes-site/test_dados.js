@@ -25,6 +25,28 @@ test('normaliza precos no formato brasileiro', () => {
   assert.equal(p.desconto, 42);
 });
 
+test('aceita preco com ponto decimal vindo da migracao', () => {
+  assert.equal(normalizarProduto({ ...linhaOk, preco_por: '75.0' }).precoPor, 75);
+  assert.equal(normalizarProduto({ ...linhaOk, preco_por: '110.0' }).precoPor, 110);
+});
+
+test('aceita preco com duas casas apos o ponto', () => {
+  assert.equal(normalizarProduto({ ...linhaOk, preco_por: '75.50' }).precoPor, 75.5);
+});
+
+test('ponto com tres digitos continua sendo milhar', () => {
+  assert.equal(normalizarProduto({ ...linhaOk, preco_por: '1.299' }).precoPor, 1299);
+});
+
+test('formato brasileiro completo continua funcionando', () => {
+  assert.equal(normalizarProduto({ ...linhaOk, preco_por: '1.299,90' }).precoPor, 1299.9);
+  assert.equal(normalizarProduto({ ...linhaOk, preco_de: '189,90' }).precoDe, 189.9);
+});
+
+test('numero inteiro sem separador', () => {
+  assert.equal(normalizarProduto({ ...linhaOk, preco_por: '110' }).precoPor, 110);
+});
+
 test('linha sem preco_por e invalida', () => {
   assert.equal(normalizarProduto({ ...linhaOk, preco_por: '' }), null);
 });
