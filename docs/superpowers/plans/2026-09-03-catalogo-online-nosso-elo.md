@@ -172,8 +172,11 @@ Criar `ferramentas/parser_preco.py`:
 """Converte os blocos de preco do catalogo Word em numeros."""
 import re
 
-RE_DE = re.compile(r'De\s*:?\s*(?:R\$)?\s*(\d{1,3}(?:\.\d{3})*,\d{2})', re.I)
-RE_POR = re.compile(r'Por\s*:?\s*(?:R\$)?\s*(\d{1,3}(?:\.\d{3})*,\d{2})', re.I)
+# (?<!\w) impede que o "de" de "verde" ou o "por" de "vapor" sejam lidos
+# como rotulo de preco. Sem isso, "Sabonete verde 30,00" viraria um preco
+# e o produto sumiria do catalogo.
+RE_DE = re.compile(r'(?<!\w)De\b\s*:?\s*(?:R\$)?\s*(\d{1,3}(?:\.\d{3})*,\d{2})', re.I)
+RE_POR = re.compile(r'(?<!\w)Por\b\s*:?\s*(?:R\$)?\s*(\d{1,3}(?:\.\d{3})*,\d{2})', re.I)
 RE_DESCONTO = re.compile(r'[\u2013\u2014\-]\s*(\d{1,3})\s*%')
 RE_CADA = re.compile(r'\bcada\b', re.I)
 
@@ -312,8 +315,12 @@ Criar `ferramentas/parser_produto.py`:
 """Separa nome, tamanho e descricao das caixas de texto do catalogo."""
 import re
 
+# O lookahead desliga o ignorecase com (?-i:...) de proposito: a unidade pode
+# vir grudada na descricao com maiuscula ("100 mlFloral"), o que deve casar,
+# mas nao pode ser o inicio de uma palavra minuscula ("100 gramas", "250 gel"),
+# o que casaria 'g' e comeria parte do nome. Um \b simples reprova os dois.
 RE_TAMANHO = re.compile(
-    r'(\d{1,4}(?:,\d{1,2})?)\s*(ml|g|kg|un|unidades?)\b', re.I)
+    r'(\d{1,4}(?:,\d{1,2})?)\s*(ml|g|kg|un|unidades?)(?!(?-i:[a-z]))', re.I)
 RE_TRANSICAO = re.compile(r'^([A-Z\u00c0-\u00dc0-9][A-Z\u00c0-\u00dc0-9\s\.\-]{2,}?)(?=[A-Z\u00c0-\u00dc][a-z\u00e0-\u00fc])')
 
 
@@ -449,6 +456,25 @@ class TestExtrairTokens(unittest.TestCase):
         xml = '<w:document><w:txbxContent><w:p><w:t>  </w:t></w:p></w:txbxContent></w:document>'
         self.assertEqual(extrair_tokens_do_xml(xml, {}), [])
 
+    def test_ancora_ja_fechada_nao_empresta_coordenadas(self):
+        xml = ('<w:document>'
+               '<wp:anchor><wp:positionH><wp:posOffset>7000</wp:posOffset></wp:positionH>'
+               '<wp:positionV><wp:posOffset>8000</wp:posOffset></wp:positionV>'
+               '<wp:extent cx="1" cy="1"/></wp:anchor>'
+               '<wp:inline><a:blip r:embed="rId9"/></wp:inline>'
+               '</w:document>')
+        t = extrair_tokens_do_xml(xml, {'rId9': 'media/solta.png'})
+        self.assertEqual(t[0]['valor'], 'media/solta.png')
+        self.assertIsNone(t[0]['x'])
+        self.assertIsNone(t[0]['y'])
+
+    def test_entidades_xml_sao_decodificadas(self):
+        xml = ('<w:document><w:txbxContent><w:p>'
+               '<w:t>Tom &amp; Jerry &lt;novo&gt;</w:t>'
+               '</w:p></w:txbxContent></w:document>')
+        t = extrair_tokens_do_xml(xml, {})
+        self.assertEqual(t[0]['valor'], 'Tom & Jerry <novo>')
+
 
 if __name__ == '__main__':
     unittest.main()
@@ -465,16 +491,17 @@ Criar `ferramentas/docx_leitor.py`:
 
 ```python
 """Le um .docx e devolve imagens e caixas de texto em ordem documental."""
+import html
 import re
 import zipfile
 
-RE_FALLBACK = re.compile(r'<mc:Fallback>.*?</mc:Fallback>', re.S)
+# [^>]* tolera a forma <mc:Fallback attr="...">, que o Word tambem emite.
+RE_FALLBACK = re.compile(r'<mc:Fallback\b[^>]*>.*?</mc:Fallback>', re.S)
 RE_REL = re.compile(r'Id="([^"]+)"[^>]*Target="(media/[^"]+)"')
 RE_EMBED = re.compile(r'r:embed="([^"]+)"')
 RE_TXBX = re.compile(r'<w:txbxContent>(.*?)</w:txbxContent>', re.S)
 RE_TEXTO = re.compile(r'<w:t[^>]*>([^<]*)</w:t>')
 RE_QUEBRA = re.compile(r'lastRenderedPageBreak')
-RE_ANCHOR = re.compile(r'<wp:anchor\b', re.S)
 RE_POS_H = re.compile(r'<wp:positionH.*?<wp:posOffset>(-?\d+)</wp:posOffset>', re.S)
 RE_POS_V = re.compile(r'<wp:positionV.*?<wp:posOffset>(-?\d+)</wp:posOffset>', re.S)
 RE_EXTENT = re.compile(r'<wp:extent\s+cx="(\d+)"\s+cy="(\d+)"')
@@ -489,11 +516,23 @@ def _pagina_ate(xml, posicao):
     return 1 + len(RE_QUEBRA.findall(xml, 0, posicao))
 
 
+SEM_GEOMETRIA = {'x': None, 'y': None, 'largura': None, 'altura': None}
+
+
 def _geometria(xml, posicao_embed):
-    """Procura o wp:anchor que envolve a imagem e le suas coordenadas."""
+    """Le as coordenadas do wp:anchor que realmente envolve o elemento."""
     inicio = xml.rfind('<wp:anchor', 0, posicao_embed)
     if inicio == -1:
-        return {'x': None, 'y': None, 'largura': None, 'altura': None}
+        return dict(SEM_GEOMETRIA)
+
+    # A ancora mais proxima pode ja ter fechado antes deste elemento — e o
+    # caso de uma imagem wp:inline. Sem esta checagem ela herdaria as
+    # coordenadas de OUTRO produto e o pareamento da Task 5 sairia errado,
+    # sem excecao e sem valor nulo que denuncie o problema.
+    fim = xml.find('</wp:anchor>', inicio)
+    if fim != -1 and fim < posicao_embed:
+        return dict(SEM_GEOMETRIA)
+
     trecho = xml[inicio:posicao_embed + 200]
     h = RE_POS_H.search(trecho)
     v = RE_POS_V.search(trecho)
@@ -521,7 +560,11 @@ def extrair_tokens_do_xml(xml, mapa_rels):
         })
 
     for m in RE_TXBX.finditer(xml):
-        texto = re.sub(r'\s+', ' ', ''.join(RE_TEXTO.findall(m.group(1)))).strip()
+        # html.unescape converte &amp; &lt; &gt; &quot; de volta ao caractere
+        # original. Sem isso, um nome como "M&M" chegaria ao cliente escrito
+        # "M&amp;M" no catalogo.
+        bruto = html.unescape(''.join(RE_TEXTO.findall(m.group(1))))
+        texto = re.sub(r'\s+', ' ', bruto).strip()
         if not texto:
             continue
         geo = _geometria(xml, m.start())
@@ -627,6 +670,24 @@ class TestConverterWebp(unittest.TestCase):
         converter_webp(buf.getvalue(), destino)
         self.assertEqual(Image.open(destino).mode, 'RGBA')
 
+    def test_preserva_transparencia_de_paleta(self):
+        # PNG de paleta com transparencia: o recorte do produto nao pode
+        # virar fundo preto. getbands() aqui devolve ('P',), sem alfa.
+        origem = Image.new('P', (40, 40))
+        origem.putpalette([255, 255, 255] + [0, 0, 0] * 255)
+        buf = io.BytesIO()
+        origem.save(buf, 'PNG', transparency=0)
+        destino = os.path.join(self.dir, 'p.webp')
+        converter_webp(buf.getvalue(), destino)
+        self.assertEqual(Image.open(destino).mode, 'RGBA')
+
+    def test_tons_de_cinza_vira_rgb(self):
+        buf = io.BytesIO()
+        Image.new('L', (30, 30), 128).save(buf, 'PNG')
+        destino = os.path.join(self.dir, 'l.webp')
+        converter_webp(buf.getvalue(), destino)
+        self.assertEqual(Image.open(destino).mode, 'RGB')
+
     def test_dados_invalidos_retornam_false(self):
         destino = os.path.join(self.dir, 'e.webp')
         self.assertFalse(converter_webp(b'nao sou imagem', destino))
@@ -664,8 +725,14 @@ def converter_webp(dados, destino, lado_max=800, qualidade=82):
     except Exception:
         return False
 
-    if img.mode not in ('RGB', 'RGBA'):
-        img = img.convert('RGBA' if 'A' in img.getbands() else 'RGB')
+    # PNG de paleta guarda a transparencia em info['transparency'], nao numa
+    # banda alfa: getbands() devolve ('P',) e um teste por 'A' nao a enxerga.
+    # Converter esse caso para RGB pinta de preto o fundo recortado do produto.
+    tem_alfa = img.mode in ('RGBA', 'LA', 'PA') or 'transparency' in img.info
+    if tem_alfa:
+        img = img.convert('RGBA')
+    elif img.mode != 'RGB':
+        img = img.convert('RGB')
 
     maior = max(img.size)
     if maior > lado_max:
@@ -673,7 +740,10 @@ def converter_webp(dados, destino, lado_max=800, qualidade=82):
         novo = (round(img.width * escala), round(img.height * escala))
         img = img.resize(novo, Image.LANCZOS)
 
-    os.makedirs(os.path.dirname(destino), exist_ok=True)
+    # os.path.dirname('a.webp') e '' e os.makedirs('') levanta FileNotFoundError.
+    pasta = os.path.dirname(destino)
+    if pasta:
+        os.makedirs(pasta, exist_ok=True)
     img.save(destino, 'WEBP', quality=qualidade, method=6)
     return True
 
@@ -698,7 +768,7 @@ def extrair_imagens(caminho_docx, pasta_destino):
 - [ ] **Step 4: Rodar o teste e confirmar que passa**
 
 Rodar: `python -m unittest ferramentas.testes.test_imagens -v`
-Esperado: PASS, 5 testes
+Esperado: PASS, 7 testes
 
 - [ ] **Step 5: Rodar contra o documento real e conferir a redução de peso**
 
@@ -948,7 +1018,26 @@ def main(caminho_docx):
 
     print('Lendo o documento...')
     tokens = ler_tokens(caminho_docx)
-    pares = {id(p['nome_token']): p for p in parear(tokens)}
+
+    # Primeira passada: separar as caixas que sao nome de produto. So elas
+    # entram no pareamento. `parear` consome cada imagem uma unica vez, entao
+    # um bloco de preco ou um cabecalho posicionado abaixo de uma foto
+    # roubaria a imagem do produto a que ela pertence.
+    nomes = []
+    for token in tokens:
+        if token['tipo'] != 'txt':
+            continue
+        texto = token['valor']
+        if texto.strip().upper() == 'ESGOTADO':
+            continue
+        if parse_preco(texto) or e_cabecalho(texto):
+            continue
+        if parse_produto(texto)['nome']:
+            nomes.append(token)
+
+    imagens = [t for t in tokens if t['tipo'] == 'img']
+    pares = {id(p['nome_token']): p for p in parear(imagens + nomes)}
+    print('  {} nomes de produto, {} imagens'.format(len(nomes), len(imagens)))
 
     linhas, conferir, usados = [], [], set()
     marca_atual, categoria_atual = '', ''
@@ -2586,8 +2675,23 @@ export const URL_PLANILHA = 'COLAR_AQUI_O_LINK_CSV_PUBLICADO';
 
 - [ ] **Step 4: Copiar as imagens e gerar o backup**
 
+O `.docx` carrega cerca de 300 imagens órfãs — arquivos em `word/media/` que nenhuma parte do documento referencia (1.146 arquivos de mídia contra 799 rIds usados, medido na Task 3). Copiar só as que `produtos.csv` de fato usa evita publicar esse peso morto.
+
 ```bash
-cp ferramentas/saida/img/*.webp site/img/
+python -c "
+import csv, os, shutil
+usadas = {l['imagem'] for l in csv.DictReader(open('ferramentas/saida/produtos.csv', encoding='utf-8-sig')) if l['imagem']}
+os.makedirs('site/img', exist_ok=True)
+copiadas = 0
+for nome in usadas:
+    origem = os.path.join('ferramentas/saida/img', nome)
+    if os.path.exists(origem):
+        shutil.copy2(origem, os.path.join('site/img', nome)); copiadas += 1
+    else:
+        print('AUSENTE:', nome)
+disponiveis = len([n for n in os.listdir('ferramentas/saida/img') if n.endswith('.webp')])
+print(f'{copiadas} copiadas de {len(usadas)} referenciadas; {disponiveis - copiadas} orfas descartadas')
+"
 node -e "const fs=require('node:fs');fs.writeFileSync('site/img/lista.json',JSON.stringify(fs.readdirSync('site/img').filter(n=>n.endsWith('.webp'))));console.log('lista.json com',JSON.parse(fs.readFileSync('site/img/lista.json')).length,'imagens')"
 curl -s "COLAR_AQUI_O_LINK_CSV_PUBLICADO" -o /tmp/p.csv
 node -e "import('./site/js/csv.js').then(async(m)=>{const fs=await import('node:fs');const d=await import('./site/js/dados.js');const {produtos}=d.validarLista(m.parseCSV(fs.readFileSync('/tmp/p.csv','utf8')));fs.writeFileSync('site/produtos-backup.json',JSON.stringify(produtos));console.log('backup com',produtos.length,'produtos')})"
