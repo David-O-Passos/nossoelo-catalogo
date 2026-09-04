@@ -64,6 +64,25 @@ class TestExtrairTokens(unittest.TestCase):
         xml = '<w:document><w:txbxContent><w:p><w:t>  </w:t></w:p></w:txbxContent></w:document>'
         self.assertEqual(extrair_tokens_do_xml(xml, {}), [])
 
+    def test_ancora_ja_fechada_nao_empresta_coordenadas(self):
+        xml = ('<w:document>'
+               '<wp:anchor><wp:positionH><wp:posOffset>7000</wp:posOffset></wp:positionH>'
+               '<wp:positionV><wp:posOffset>8000</wp:posOffset></wp:positionV>'
+               '<wp:extent cx="1" cy="1"/></wp:anchor>'
+               '<wp:inline><a:blip r:embed="rId9"/></wp:inline>'
+               '</w:document>')
+        t = extrair_tokens_do_xml(xml, {'rId9': 'media/solta.png'})
+        self.assertEqual(t[0]['valor'], 'media/solta.png')
+        self.assertIsNone(t[0]['x'])
+        self.assertIsNone(t[0]['y'])
+
+    def test_entidades_xml_sao_decodificadas(self):
+        xml = ('<w:document><w:txbxContent><w:p>'
+               '<w:t>Tom &amp; Jerry &lt;novo&gt;</w:t>'
+               '</w:p></w:txbxContent></w:document>')
+        t = extrair_tokens_do_xml(xml, {})
+        self.assertEqual(t[0]['valor'], 'Tom & Jerry <novo>')
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,8 +1,10 @@
 """Le um .docx e devolve imagens e caixas de texto em ordem documental."""
+import html
 import re
 import zipfile
 
-RE_FALLBACK = re.compile(r'<mc:Fallback>.*?</mc:Fallback>', re.S)
+# [^>]* tolera a forma <mc:Fallback attr="...">, que o Word tambem emite.
+RE_FALLBACK = re.compile(r'<mc:Fallback\b[^>]*>.*?</mc:Fallback>', re.S)
 RE_REL = re.compile(r'Id="([^"]+)"[^>]*Target="(media/[^"]+)"')
 RE_EMBED = re.compile(r'r:embed="([^"]+)"')
 RE_TXBX = re.compile(r'<w:txbxContent>(.*?)</w:txbxContent>', re.S)
@@ -22,11 +24,23 @@ def _pagina_ate(xml, posicao):
     return 1 + len(RE_QUEBRA.findall(xml, 0, posicao))
 
 
+SEM_GEOMETRIA = {'x': None, 'y': None, 'largura': None, 'altura': None}
+
+
 def _geometria(xml, posicao_embed):
-    """Procura o wp:anchor que envolve a imagem e le suas coordenadas."""
+    """Le as coordenadas do wp:anchor que realmente envolve o elemento."""
     inicio = xml.rfind('<wp:anchor', 0, posicao_embed)
     if inicio == -1:
-        return {'x': None, 'y': None, 'largura': None, 'altura': None}
+        return dict(SEM_GEOMETRIA)
+
+    # A ancora mais proxima pode ja ter fechado antes deste elemento — e o
+    # caso de uma imagem wp:inline. Sem esta checagem ela herdaria as
+    # coordenadas de OUTRO produto e o pareamento da Task 5 sairia errado,
+    # sem excecao e sem valor nulo que denuncie o problema.
+    fim = xml.find('</wp:anchor>', inicio)
+    if fim != -1 and fim < posicao_embed:
+        return dict(SEM_GEOMETRIA)
+
     trecho = xml[inicio:posicao_embed + 200]
     h = RE_POS_H.search(trecho)
     v = RE_POS_V.search(trecho)
@@ -54,7 +68,11 @@ def extrair_tokens_do_xml(xml, mapa_rels):
         })
 
     for m in RE_TXBX.finditer(xml):
-        texto = re.sub(r'\s+', ' ', ''.join(RE_TEXTO.findall(m.group(1)))).strip()
+        # html.unescape converte &amp; &lt; &gt; &quot; de volta ao caractere
+        # original. Sem isso, um nome como "M&M" chegaria ao cliente escrito
+        # "M&amp;M" no catalogo.
+        bruto = html.unescape(''.join(RE_TEXTO.findall(m.group(1))))
+        texto = re.sub(r'\s+', ' ', bruto).strip()
         if not texto:
             continue
         geo = _geometria(xml, m.start())
