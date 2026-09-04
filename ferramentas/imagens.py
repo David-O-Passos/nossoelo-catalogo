@@ -30,7 +30,9 @@ def converter_webp(dados, destino, lado_max=800, qualidade=82):
         novo = (round(img.width * escala), round(img.height * escala))
         img = img.resize(novo, Image.LANCZOS)
 
-    os.makedirs(os.path.dirname(destino), exist_ok=True)
+    pasta = os.path.dirname(destino)
+    if pasta:
+        os.makedirs(pasta, exist_ok=True)
     img.save(destino, 'WEBP', quality=qualidade, method=6)
     return True
 
