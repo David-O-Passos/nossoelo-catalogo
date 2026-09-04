@@ -1,55 +1,80 @@
-"""Associa cada caixa de texto de produto a imagem que aparece acima dela."""
+"""Casa cada produto com a foto cuja legenda mais se parece com o nome dele.
 
-DISTANCIA_MAXIMA = 1500000  # EMU, cerca de 4 cm
+As coordenadas do .docx nao servem para isso: sao relativas ao paragrafo
+ancora, nao a pagina. A ordem documental tambem nao: foi conferida contra
+as fotos e troca produtos de lugar. O sinal confiavel e o nome impresso no
+frasco, capturado no passo de legendagem.
+"""
+import re
+import unicodedata
+
+# Palavras que aparecem em quase todo item e por isso nao distinguem nada.
+VAZIAS = {
+    'de', 'da', 'do', 'das', 'dos', 'e', 'em', 'com', 'para', 'por', 'a', 'o',
+    'ml', 'gr', 'kg', 'un', 'g', 'natura', 'boticario', 'avon', 'eudora',
+    'perfume', 'perfumaria', 'linha', 'produto', 'refil', 'cada',
+}
+
+ESCORE_ALTO = 0.6
 
 
-def _sobrepoe_horizontal(a, b):
-    a_fim = a['x'] + (a['largura'] or 0)
-    b_fim = b['x'] + (b['largura'] or 0)
-    return a['x'] < b_fim and b['x'] < a_fim
+def normalizar(texto):
+    """Minusculas, sem acento, sem pontuacao, espacos colapsados."""
+    t = unicodedata.normalize('NFD', str(texto or '').lower())
+    t = ''.join(c for c in t if unicodedata.category(c) != 'Mn')
+    t = re.sub(r'[^a-z0-9]+', ' ', t)
+    return re.sub(r'\s+', ' ', t).strip()
 
 
-def parear(tokens):
-    """Para cada token de texto, escolhe a imagem elegivel mais proxima."""
-    imagens = [t for t in tokens if t['tipo'] == 'img'
-               and t['x'] is not None and t['y'] is not None]
-    textos = [t for t in tokens if t['tipo'] == 'txt']
+def palavras(texto):
+    """Conjunto de tokens significativos do texto."""
+    return {p for p in normalizar(texto).split()
+            if len(p) >= 2 and p not in VAZIAS}
+
+
+def similaridade(a, b):
+    """Indice de Jaccard entre os conjuntos de palavras. 0 quando nao ha uniao."""
+    pa, pb = palavras(a), palavras(b)
+    if not pa or not pb:
+        return 0.0
+    return len(pa & pb) / len(pa | pb)
+
+
+def _rotulo(legenda):
+    """O texto da legenda que melhor identifica o item."""
+    return legenda.get('produto') or legenda.get('texto_visivel') or ''
+
+
+def casar(produtos, legendas, minimo=0.34):
+    """Casa produtos com legendas, do par mais forte para o mais fraco.
+
+    Cada imagem serve a um unico produto. Pares abaixo de `minimo` ficam de
+    fora — e melhor um produto sem foto do que com a foto errada.
+    """
+    candidatas = [l for l in legendas if l.get('tipo') == 'produto']
+
+    pontuados = []
+    for p in produtos:
+        alvo = ' '.join(filter(None, [p.get('nome', ''), p.get('tamanho', '')]))
+        for l in candidatas:
+            escore = similaridade(alvo, _rotulo(l))
+            if escore >= minimo:
+                pontuados.append((escore, p['id'], l))
+
+    # Do melhor escore para o pior, para que o par mais forte tenha prioridade
+    # sobre a ordem em que os produtos aparecem na lista.
+    pontuados.sort(key=lambda t: -t[0])
+
+    resultado = {}
     usadas = set()
-    resultado = []
-
-    for texto in textos:
-        if texto['x'] is None or texto['y'] is None:
-            resultado.append({'nome_token': texto, 'imagem': None,
-                              'distancia': None, 'confianca': 'baixa'})
+    for escore, pid, l in pontuados:
+        if pid in resultado or l['arquivo'] in usadas:
             continue
-
-        melhor = None
-        melhor_dist = None
-        for im in imagens:
-            if im['valor'] in usadas:
-                continue
-            if im['pagina'] != texto['pagina']:
-                continue
-            base_img = im['y'] + (im['altura'] or 0)
-            if base_img > texto['y']:
-                continue
-            if not _sobrepoe_horizontal(im, texto):
-                continue
-            dist = texto['y'] - base_img
-            if melhor_dist is None or dist < melhor_dist:
-                melhor, melhor_dist = im, dist
-
-        if melhor is None:
-            resultado.append({'nome_token': texto, 'imagem': None,
-                              'distancia': None, 'confianca': 'baixa'})
-            continue
-
-        usadas.add(melhor['valor'])
-        resultado.append({
-            'nome_token': texto,
-            'imagem': melhor['valor'],
-            'distancia': melhor_dist,
-            'confianca': 'alta' if melhor_dist <= DISTANCIA_MAXIMA else 'baixa',
-        })
-
+        usadas.add(l['arquivo'])
+        resultado[pid] = {
+            'arquivo': l['arquivo'],
+            'escore': round(escore, 3),
+            'confianca': ('alta' if escore >= ESCORE_ALTO
+                          and l.get('confianca') == 'alta' else 'baixa'),
+        }
     return resultado
