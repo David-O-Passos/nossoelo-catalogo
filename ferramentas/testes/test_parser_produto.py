@@ -56,6 +56,14 @@ class TestParseProduto(unittest.TestCase):
         self.assertEqual(r['nome'], '')
         self.assertEqual(r['confianca'], 'baixa')
 
+    def test_gramas_nao_e_confundido_com_unidade(self):
+        r = parse_produto('Creme 100 gramas de hidratacao')
+        self.assertIsNone(r['tamanho'])
+
+    def test_gel_nao_e_confundido_com_unidade(self):
+        r = parse_produto('Shampoo 250 gel suave')
+        self.assertIsNone(r['tamanho'])
+
 
 if __name__ == '__main__':
     unittest.main()
