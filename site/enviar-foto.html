@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Enviar foto — NOSSO.ELO</title>
+<link rel="stylesheet" href="css/estilo.css">
+</head>
+<body>
+<header class="topo"><h1>Enviar foto de produto</h1></header>
+<main style="padding:16px;max-width:480px">
+  <p>1. Escolha a foto. 2. Dê um nome curto. 3. Envie.<br>
+     Depois copie o nome do arquivo para a coluna <strong>imagem</strong> da planilha.</p>
+  <p><input type="password" id="senha" placeholder="Senha" style="width:100%;padding:12px"></p>
+  <p><input type="text" id="nome" placeholder="nome-do-produto" style="width:100%;padding:12px"></p>
+  <p><input type="file" id="arquivo" accept="image/*"></p>
+  <button id="enviar" class="botao-enviar" style="border:0;cursor:pointer">Enviar</button>
+  <p id="status" style="margin-top:16px"></p>
+</main>
+<script type="module">
+const $ = (s) => document.querySelector(s);
+
+/** Reduz para 800px no maior lado e converte para WebP dentro do navegador. */
+async function paraWebp(file) {
+  const bitmap = await createImageBitmap(file);
+  const escala = Math.min(1, 800 / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * escala);
+  canvas.height = Math.round(bitmap.height * escala);
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  const blob = await new Promise((r) => canvas.toBlob(r, 'image/webp', 0.82));
+  const buffer = await blob.arrayBuffer();
+  let binario = '';
+  for (const b of new Uint8Array(buffer)) binario += String.fromCharCode(b);
+  return btoa(binario);
+}
+
+$('#enviar').addEventListener('click', async () => {
+  const file = $('#arquivo').files[0];
+  const nomeBase = $('#nome').value.trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+  if (!file || !nomeBase) {
+    $('#status').textContent = 'Escolha a foto e digite um nome.';
+    return;
+  }
+
+  $('#status').textContent = 'Enviando...';
+  try {
+    const resposta = await fetch('/api/upload', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        senha: $('#senha').value,
+        nome: nomeBase + '.webp',
+        conteudoBase64: await paraWebp(file),
+      }),
+    });
+    const r = await resposta.json();
+    $('#status').textContent = r.ok
+      ? `Pronto! Escreva "${r.arquivo}" na coluna imagem da planilha. A foto aparece no site em cerca de 1 minuto.`
+      : 'Erro: ' + r.erro;
+  } catch (e) {
+    $('#status').textContent = 'Falhou: ' + e.message;
+  }
+});
+</script>
+</body>
+</html>
