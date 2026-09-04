@@ -22,7 +22,20 @@ document.querySelector('#conferir').addEventListener('click', async () => {
   const saida = document.querySelector('#saida');
   saida.textContent = 'Conferindo...';
   try {
-    const texto = await (await fetch(URL_PLANILHA + '&t=' + Date.now())).text();
+    const resposta = await fetch(URL_PLANILHA + '&t=' + Date.now());
+    if (!resposta.ok) {
+      throw new Error('a planilha respondeu ' + resposta.status);
+    }
+    const texto = await resposta.text();
+
+    // fetch nao rejeita em erro de HTTP, entao uma pagina de erro em HTML
+    // chegaria aqui como texto e seria lida como CSV — inventando erros numa
+    // pagina cuja unica serventia e ser confiavel. Confere o cabecalho antes.
+    const cabecalho = (texto.split('\n')[0] || '').toLowerCase();
+    if (!cabecalho.includes('id') || !cabecalho.includes('preco_por')) {
+      throw new Error('a resposta nao parece a planilha de produtos');
+    }
+
     const linhas = parseCSV(texto);
 
     // O navegador nao lista pastas. Duas fontes se complementam:
