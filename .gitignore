@@ -1,4 +1,10 @@
 __pycache__/
 *.pyc
-ferramentas/saida/
 node_modules/
+
+# A pasta de saida da migracao e regeravel a partir do .docx...
+ferramentas/saida/*
+# ...menos as legendas: elas sao leitura de imagem por IA, feita uma unica
+# vez, e nao saem do codigo. Perde-las significa refazer o passo mais caro
+# do projeto. Versionar aqui e o que mantem a migracao reproduzivel.
+!ferramentas/saida/legendas.json
