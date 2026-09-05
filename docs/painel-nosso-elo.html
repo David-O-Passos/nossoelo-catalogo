@@ -1,0 +1,711 @@
+<meta charset="utf-8">
+<title>NOSSO.ELO por Dentro</title>
+<style>
+  :root {
+    --bg: #f6f1ec;
+    --surface: #ffffff;
+    --surface-2: #efe6dd;
+    --ink: #211a16;
+    --muted: #6f6259;
+    --line: #e3d8cb;
+    --accent: #6d2e46;
+    --accent-soft: #f2e1e8;
+    --on-accent: #fbf3f6;
+    --good: #1c7a56;
+    --good-soft: #e1f2e9;
+    --warn: #9a5b12;
+    --warn-soft: #f9ecd8;
+    --shadow: 33 26 22;
+    --serif: "Fraunces", Georgia, "Times New Roman", serif;
+    --sans: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1b1613;
+      --surface: #241d19;
+      --surface-2: #2c231d;
+      --ink: #f2ece5;
+      --muted: #b7a89d;
+      --line: #3c3128;
+      --accent: #d98aab;
+      --accent-soft: #3a2530;
+      --on-accent: #2a1420;
+      --good: #6fcf9e;
+      --good-soft: #1e3327;
+      --warn: #e0a857;
+      --warn-soft: #3a2c16;
+      --shadow: 0 0 0;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #1b1613;
+    --surface: #241d19;
+    --surface-2: #2c231d;
+    --ink: #f2ece5;
+    --muted: #b7a89d;
+    --line: #3c3128;
+    --accent: #d98aab;
+    --accent-soft: #3a2530;
+    --on-accent: #2a1420;
+    --good: #6fcf9e;
+    --good-soft: #1e3327;
+    --warn: #e0a857;
+    --warn-soft: #3a2c16;
+    --shadow: 0 0 0;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.6 var(--sans);
+  }
+
+  ::selection { background: var(--accent-soft); color: var(--ink); }
+
+  a { color: var(--accent); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  h1, h2, h3 { font-family: var(--serif); font-weight: 600; text-wrap: balance; margin: 0; }
+
+  code, .mono { font-family: var(--mono); }
+
+  /* ---------- masthead ---------- */
+
+  header.masthead {
+    padding: 56px 0 40px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .eyebrow {
+    font: 700 11.5px var(--sans);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 14px;
+  }
+
+  header.masthead h1 {
+    font-size: clamp(2.6rem, 6vw, 3.6rem);
+    letter-spacing: 0.01em;
+    color: var(--ink);
+  }
+
+  header.masthead h1 span { color: var(--accent); }
+
+  .subhead {
+    font-size: 1.08rem;
+    color: var(--muted);
+    max-width: 62ch;
+    margin: 16px 0 28px;
+  }
+
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .meta-chip {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 18px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    min-width: 150px;
+  }
+
+  .meta-chip .label {
+    font: 700 10.5px var(--sans);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .meta-chip .value {
+    font: 600 15px var(--sans);
+    color: var(--ink);
+  }
+
+  .meta-chip .value a { text-decoration: none; font-family: var(--mono); font-size: 13px; }
+  .meta-chip .value a:hover { text-decoration: underline; }
+
+  /* ---------- sections ---------- */
+
+  main { padding: 8px 0 24px; }
+
+  section { padding: 52px 0; border-bottom: 1px solid var(--line); }
+  section:last-of-type { border-bottom: none; }
+
+  .section-label {
+    font: 700 11.5px var(--sans);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 10px;
+  }
+
+  section h2 { font-size: 1.9rem; margin-bottom: 14px; }
+
+  section > .intro {
+    color: var(--muted);
+    max-width: 66ch;
+    font-size: 1.02rem;
+    margin: 0 0 30px;
+  }
+
+  /* ---------- de/para table ---------- */
+
+  .tabela-mudanca {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .tabela-mudanca th {
+    text-align: left;
+    font: 700 11.5px var(--sans);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 14px 18px;
+    color: var(--muted);
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .tabela-mudanca th.col-antes { background: var(--surface-2); }
+  .tabela-mudanca th.col-agora { background: var(--accent-soft); color: var(--accent); }
+
+  .tabela-mudanca td {
+    padding: 15px 18px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+    font-size: 0.96rem;
+  }
+
+  .tabela-mudanca tr:last-child td { border-bottom: none; }
+
+  .tabela-mudanca td.rotulo { font-weight: 600; width: 22%; color: var(--ink); }
+  .tabela-mudanca td.antes { color: var(--muted); background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
+  .tabela-mudanca td.agora { color: var(--ink); background: color-mix(in srgb, var(--accent-soft) 45%, transparent); font-weight: 500; }
+
+  /* ---------- diagrams ---------- */
+
+  figure.diagram {
+    margin: 0;
+    color: var(--ink);
+  }
+
+  figure.diagram svg {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  figure.diagram figcaption {
+    margin-top: 14px;
+    font-size: 0.92rem;
+    color: var(--muted);
+    max-width: 68ch;
+  }
+
+  .node { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
+  .node-accent { fill: var(--accent); stroke: var(--accent); }
+  .node-title { fill: currentColor; font: 600 14px var(--sans); }
+  .node-title-accent { fill: var(--on-accent); font: 600 14px var(--sans); }
+  .node-sub { fill: var(--muted); font: 500 11px var(--sans); }
+  .node-sub-accent { fill: var(--on-accent); opacity: 0.85; font: 500 11px var(--sans); }
+  .flow-line { stroke: var(--muted); stroke-width: 1.6; fill: none; }
+  .flow-label { fill: var(--muted); font: 500 11.5px var(--sans); }
+  .flow-label-strong { fill: var(--accent); font: 600 11.5px var(--sans); }
+
+  /* ---------- service cards ---------- */
+
+  .cards-servico {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 32px;
+  }
+
+  .card-servico {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 18px 20px;
+  }
+
+  .card-servico .nome {
+    font: 700 10.5px var(--sans);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  .card-servico p { margin: 0; font-size: 0.94rem; color: var(--ink); }
+
+  /* ---------- stat grid ---------- */
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .stat-tile {
+    background: var(--surface);
+    padding: 26px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .stat-tile .numero {
+    font-family: var(--serif);
+    font-size: 2.1rem;
+    font-weight: 600;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  .stat-tile .desc { font-size: 0.88rem; color: var(--muted); }
+
+  /* ---------- decisions table ---------- */
+
+  .tabela-decisoes { width: 100%; border-collapse: collapse; }
+
+  .tabela-decisoes td {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+
+  .tabela-decisoes tr:last-child td { border-bottom: none; }
+
+  .tabela-decisoes td.decisao {
+    width: 30%;
+    padding-right: 24px;
+    font-family: var(--mono);
+    font-size: 0.86rem;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .tabela-decisoes td.motivo { font-size: 0.95rem; color: var(--ink); }
+
+  /* ---------- cost ---------- */
+
+  .tabela-custo { width: 100%; max-width: 460px; border-collapse: collapse; }
+
+  .tabela-custo td { padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 0.98rem; }
+  .tabela-custo td:last-child { text-align: right; font-family: var(--mono); }
+
+  .tabela-custo tr.total td {
+    border-bottom: none;
+    border-top: 2px solid var(--ink);
+    padding-top: 16px;
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: var(--accent);
+  }
+
+  /* ---------- footer ---------- */
+
+  footer {
+    padding: 40px 0 64px;
+  }
+
+  footer .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    margin-bottom: 18px;
+  }
+
+  footer .links a {
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  footer .links a:hover { text-decoration: underline; }
+
+  footer .rodape-nota {
+    font-size: 0.85rem;
+    color: var(--muted);
+    max-width: 60ch;
+  }
+
+  /* ---------- responsive ---------- */
+
+  @media (max-width: 720px) {
+    .cards-servico { grid-template-columns: 1fr; }
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .tabela-mudanca { display: block; overflow-x: auto; }
+    .tabela-mudanca table { min-width: 640px; }
+  }
+
+  @media (max-width: 480px) {
+    .stat-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    section, header.masthead { animation: subir 0.4s ease-out both; }
+  }
+
+  @keyframes subir {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<header class="masthead">
+  <div class="wrap">
+    <p class="eyebrow">Documentação técnica — catálogo online</p>
+    <h1>NOSSO<span>.</span>ELO por dentro</h1>
+    <p class="subhead">
+      Como um catálogo de 75 páginas em Word virou um site que se atualiza sozinho —
+      sem custo mensal, sem servidor próprio, sem programação no dia a dia.
+    </p>
+    <div class="meta-row">
+      <div class="meta-chip">
+        <span class="label">Site no ar</span>
+        <span class="value"><a href="https://nossoelo-catalogo.pages.dev" target="_blank" rel="noopener">nossoelo-catalogo.pages.dev</a></span>
+      </div>
+      <div class="meta-chip">
+        <span class="label">Custo mensal</span>
+        <span class="value">R$ 0,00</span>
+      </div>
+      <div class="meta-chip">
+        <span class="label">Atualizar o catálogo</span>
+        <span class="value">~20 minutos</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+
+    <section id="mudou">
+      <p class="section-label">01 — O que mudou</p>
+      <h2>O catálogo continua o mesmo. O trabalho de mantê-lo é que sumiu.</h2>
+      <p class="intro">
+        Nada do que o cliente compra mudou — Natura, O Boticário, Avon, Eudora, perfumes árabes.
+        O que mudou foi tudo que acontecia por trás, todo santo mês.
+      </p>
+
+      <table class="tabela-mudanca">
+        <thead>
+          <tr>
+            <th>Tarefa</th>
+            <th class="col-antes">Antes — Word + PDF</th>
+            <th class="col-agora">Agora — NOSSO.ELO</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="rotulo">Atualizar preço</td>
+            <td class="antes">Refazer o documento inteiro no Word</td>
+            <td class="agora">Mudar a coluna <code class="mono">desconto</code> na planilha</td>
+          </tr>
+          <tr>
+            <td class="rotulo">Fotos dos produtos</td>
+            <td class="antes">Garimpar no Google, todo mês, produto por produto</td>
+            <td class="agora">Enviadas uma vez, ficam pra sempre</td>
+          </tr>
+          <tr>
+            <td class="rotulo">Link na bio do Instagram</td>
+            <td class="antes">Troca toda vez que o catálogo é refeito</td>
+            <td class="agora">Nunca muda</td>
+          </tr>
+          <tr>
+            <td class="rotulo">Buscar um produto</td>
+            <td class="antes">Rolar até 75 páginas de PDF</td>
+            <td class="agora">Busca instantânea, por nome ou marca</td>
+          </tr>
+          <tr>
+            <td class="rotulo">Fazer um pedido</td>
+            <td class="antes">Vários prints soltos, um por produto</td>
+            <td class="agora">Uma mensagem só, organizada, com total</td>
+          </tr>
+          <tr>
+            <td class="rotulo">Custo mensal</td>
+            <td class="antes">R$ 0 — mas várias horas de trabalho</td>
+            <td class="agora">R$ 0 — e cerca de 20 minutos</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="arquitetura">
+      <p class="section-label">02 — A arquitetura</p>
+      <h2>Três serviços gratuitos, cada um com um único trabalho</h2>
+      <p class="intro">
+        Nenhum deles depende do outro pra funcionar. Se o Google atrasar, o site continua
+        respondendo com os últimos dados que guardou. Se o GitHub atrasar, o catálogo de
+        preços não sente nada — só o envio de fotos novas espera.
+      </p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 1180 380" role="img" aria-label="Diagrama mostrando o dono editando a planilha e enviando fotos ao GitHub; a planilha e o GitHub alimentam o site no Cloudflare Pages; o site atende o cliente, que termina o pedido no WhatsApp do dono.">
+          <defs>
+            <marker id="seta1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--muted)" />
+            </marker>
+          </defs>
+
+          <!-- Você -->
+          <rect class="node" x="20" y="158" width="150" height="64" rx="10" />
+          <text class="node-title" x="95" y="196" text-anchor="middle">Você</text>
+
+          <!-- Planilha -->
+          <rect class="node" x="290" y="50" width="200" height="64" rx="10" />
+          <text class="node-title" x="390" y="78" text-anchor="middle">Planilha</text>
+          <text class="node-sub" x="390" y="96" text-anchor="middle">Google Sheets</text>
+
+          <!-- GitHub -->
+          <rect class="node" x="290" y="266" width="200" height="64" rx="10" />
+          <text class="node-title" x="390" y="294" text-anchor="middle">GitHub</text>
+          <text class="node-sub" x="390" y="312" text-anchor="middle">fotos + código</text>
+
+          <!-- Site (destaque) -->
+          <rect class="node node-accent" x="580" y="158" width="200" height="64" rx="10" />
+          <text class="node-title-accent" x="680" y="186" text-anchor="middle">Site</text>
+          <text class="node-sub-accent" x="680" y="204" text-anchor="middle">Cloudflare Pages</text>
+
+          <!-- Cliente -->
+          <rect class="node" x="870" y="158" width="140" height="64" rx="10" />
+          <text class="node-title" x="940" y="196" text-anchor="middle">Cliente</text>
+
+          <!-- WhatsApp -->
+          <rect class="node" x="1050" y="158" width="120" height="64" rx="10" />
+          <text class="node-title" x="1110" y="188" text-anchor="middle">Você</text>
+          <text class="node-sub" x="1110" y="206" text-anchor="middle">WhatsApp</text>
+
+          <!-- Você -> Planilha -->
+          <path class="flow-line" marker-end="url(#seta1)" d="M170,175 C 220,175 240,100 288,90" />
+          <text class="flow-label" x="205" y="130">edita preço/desconto</text>
+
+          <!-- Você -> GitHub -->
+          <path class="flow-line" marker-end="url(#seta1)" d="M170,205 C 220,205 240,285 288,292" />
+          <text class="flow-label" x="195" y="255">envia foto (com senha)</text>
+
+          <!-- Planilha -> Site -->
+          <path class="flow-line" marker-end="url(#seta1)" d="M490,88 C 535,88 545,150 578,178" />
+          <text class="flow-label" x="500" y="135">lê o CSV a cada 10 min</text>
+
+          <!-- GitHub -> Site -->
+          <path class="flow-line" marker-end="url(#seta1)" d="M490,292 C 535,292 545,225 578,200" />
+          <text class="flow-label" x="497" y="252">deploy automático (~1 min)</text>
+
+          <!-- Site -> Cliente -->
+          <path class="flow-line" marker-end="url(#seta1)" d="M780,190 L 868,190" />
+          <text class="flow-label" x="781" y="180">busca e carrinho</text>
+
+          <!-- Cliente -> WhatsApp -->
+          <path class="flow-line" marker-end="url(#seta1)" d="M1010,190 L 1048,190" />
+          <text class="flow-label" x="1005" y="138">pedido pronto,</text>
+          <text class="flow-label" x="1005" y="152">com total</text>
+        </svg>
+        <figcaption>
+          A planilha manda os preços, o GitHub guarda fotos e código, o Cloudflare serve o
+          site — e todo pedido termina no WhatsApp de quem vende.
+        </figcaption>
+      </figure>
+
+      <div class="cards-servico">
+        <div class="card-servico">
+          <p class="nome">Google Sheets</p>
+          <p>É o banco de dados. Editável de qualquer celular, com histórico de versões — sem aprender nada novo.</p>
+        </div>
+        <div class="card-servico">
+          <p class="nome">GitHub</p>
+          <p>Guarda as fotos e o código do site. Toda foto nova vira um registro — e dispara o próximo passo sozinho.</p>
+        </div>
+        <div class="card-servico">
+          <p class="nome">Cloudflare Pages</p>
+          <p>Serve o site pra qualquer lugar do Brasil, rápido, de graça, sem pausa por inatividade.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="rotina">
+      <p class="section-label">03 — A rotina mensal</p>
+      <h2>Nem toda atualização é igual</h2>
+      <p class="intro">
+        Mudar preço nunca passa pelo GitHub — é direto da planilha pro site. Produto novo com
+        foto passa, sim, mas o deploy acontece sozinho; ninguém precisa tocar no Cloudflare.
+      </p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 1040 260" role="img" aria-label="Diagrama comparando dois caminhos: mudar o desconto na planilha chega direto ao site em dez minutos; enviar uma foto nova passa pelo GitHub e por um novo build no Cloudflare, levando cerca de um minuto extra, antes de chegar ao mesmo site.">
+          <defs>
+            <marker id="seta2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--muted)" />
+            </marker>
+          </defs>
+
+          <!-- Linha A: preco -->
+          <rect class="node" x="20" y="20" width="230" height="60" rx="10" />
+          <text class="node-title" x="135" y="46" text-anchor="middle">Muda o desconto</text>
+          <text class="node-sub" x="135" y="64" text-anchor="middle">na planilha</text>
+
+          <path class="flow-line" marker-end="url(#seta2)" d="M250,52 C 480,52 600,80 770,118" />
+          <text class="flow-label-strong" x="330" y="98">direto — sem passar pelo GitHub</text>
+
+          <!-- Linha B: foto -->
+          <rect class="node" x="20" y="172" width="230" height="60" rx="10" />
+          <text class="node-title" x="135" y="198" text-anchor="middle">Sobe uma foto</text>
+          <text class="node-sub" x="135" y="216" text-anchor="middle">em /enviar-foto.html</text>
+
+          <path class="flow-line" marker-end="url(#seta2)" d="M250,202 L 300,202" />
+
+          <rect class="node" x="300" y="172" width="190" height="60" rx="10" />
+          <text class="node-title" x="395" y="198" text-anchor="middle">GitHub grava</text>
+          <text class="node-sub" x="395" y="216" text-anchor="middle">o arquivo</text>
+
+          <path class="flow-line" marker-end="url(#seta2)" d="M490,202 L 520,202" />
+
+          <rect class="node" x="520" y="172" width="210" height="60" rx="10" />
+          <text class="node-title" x="625" y="198" text-anchor="middle">Cloudflare rebuilda</text>
+          <text class="node-sub" x="625" y="216" text-anchor="middle">deploy automático</text>
+
+          <path class="flow-line" marker-end="url(#seta2)" d="M730,190 C 745,175 755,150 770,138" />
+          <text class="flow-label" x="590" y="252">~1 minuto a mais que o caminho de cima</text>
+
+          <!-- Merge box -->
+          <rect class="node node-accent" x="770" y="98" width="250" height="66" rx="10" />
+          <text class="node-title-accent" x="895" y="126" text-anchor="middle">Aparece no site</text>
+          <text class="node-sub-accent" x="895" y="144" text-anchor="middle">mesmo destino, dois caminhos</text>
+        </svg>
+        <figcaption>
+          Preço e desconto chegam direto da planilha. Foto nova passa pelo GitHub e por um
+          novo build — automático, sem ninguém acionar nada — antes de chegar ao mesmo lugar.
+        </figcaption>
+      </figure>
+    </section>
+
+    <section id="migracao">
+      <p class="section-label">04 — A migração</p>
+      <h2>O catálogo antigo não foi digitado de novo à mão</h2>
+      <p class="intro">
+        Foi lido, entendido e convertido. O documento original tinha 1.146 fotos soltas e
+        nenhuma lista de produtos — só um layout bonito pra imprimir.
+      </p>
+
+      <div class="stat-grid">
+        <div class="stat-tile">
+          <span class="numero">75</span>
+          <span class="desc">páginas no documento Word original</span>
+        </div>
+        <div class="stat-tile">
+          <span class="numero">1.146</span>
+          <span class="desc">fotos extraídas do documento</span>
+        </div>
+        <div class="stat-tile">
+          <span class="numero">747</span>
+          <span class="desc">fotos identificadas por IA, lendo o nome direto no rótulo de cada frasco</span>
+        </div>
+        <div class="stat-tile">
+          <span class="numero">279</span>
+          <span class="desc">produtos migrados automaticamente pro formato da planilha</span>
+        </div>
+        <div class="stat-tile">
+          <span class="numero">99&nbsp;→&nbsp;12&nbsp;MB</span>
+          <span class="desc">peso das fotos, depois de comprimidas</span>
+        </div>
+        <div class="stat-tile">
+          <span class="numero">R$&nbsp;0,00</span>
+          <span class="desc">custo da migração inteira</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="decisoes">
+      <p class="section-label">05 — Decisões técnicas</p>
+      <h2>Cada escolha teve um motivo</h2>
+      <p class="intro">
+        Geralmente, o motivo foi o mesmo: evitar que o projeto precisasse de alguém pra
+        sempre — inclusive de mim.
+      </p>
+
+      <table class="tabela-decisoes">
+        <tbody>
+          <tr>
+            <td class="decisao">sem-banco-de-dados</td>
+            <td class="motivo">O Google Sheets já é editável, já tem histórico de versões, e ninguém precisa aprender nada novo.</td>
+          </tr>
+          <tr>
+            <td class="decisao">sem-framework</td>
+            <td class="motivo">HTML, CSS e JavaScript puro. Nada quebra daqui a dois anos porque um <code class="mono">npm install</code> parou de funcionar.</td>
+          </tr>
+          <tr>
+            <td class="decisao">sem-servidor-proprio</td>
+            <td class="motivo">O site é só arquivos estáticos. A única parte "viva" é a função que recebe fotos novas.</td>
+          </tr>
+          <tr>
+            <td class="decisao">carrinho-no-celular</td>
+            <td class="motivo">O pedido fica guardado no navegador do próprio cliente — só existe de verdade quando ele manda pro WhatsApp.</td>
+          </tr>
+          <tr>
+            <td class="decisao">sem-cache-agressivo</td>
+            <td class="motivo">De propósito: um site rápido demais que mostra preço velho é pior que um site normal.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="custo">
+      <p class="section-label">06 — Custo</p>
+      <h2>R$ 0,00 por mês, sem prazo de validade</h2>
+      <p class="intro">Três contas gratuitas, nenhuma pedindo cartão de crédito.</p>
+
+      <table class="tabela-custo">
+        <tbody>
+          <tr><td>Google Sheets</td><td>R$ 0,00</td></tr>
+          <tr><td>GitHub (repositório público)</td><td>R$ 0,00</td></tr>
+          <tr><td>Cloudflare Pages</td><td>R$ 0,00</td></tr>
+          <tr class="total"><td>Total mensal</td><td>R$ 0,00</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="links">
+      <a href="https://nossoelo-catalogo.pages.dev" target="_blank" rel="noopener">Ver o site no ar →</a>
+      <a href="https://github.com/David-O-Passos/nossoelo-catalogo" target="_blank" rel="noopener">Ver o código no GitHub →</a>
+    </div>
+    <p class="rodape-nota">
+      Documentação escrita a partir do projeto real, com os números medidos durante a
+      migração do catálogo original.
+    </p>
+  </div>
+</footer>
