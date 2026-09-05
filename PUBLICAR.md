@@ -11,9 +11,11 @@ Tempo estimado: **40 a 60 minutos.**
 | Item | Onde conferir |
 |---|---|
 | WhatsApp `5573981139437` | `site/js/config.js` — se o número mudar, é aqui |
-| 351 produtos migrados | `ferramentas/saida/produtos.csv` |
-| 266 linhas para revisar | `ferramentas/saida/conferir.csv` |
+| 279 produtos migrados, 191 já no ar | `ferramentas/saida/produtos.csv` |
+| 219 linhas para revisar | `ferramentas/saida/conferir.csv` |
 | 1.094 fotos convertidas | `ferramentas/saida/img/` |
+
+As 88 linhas com `ativo = nao` são as que o parser não conseguiu ler com segurança. Elas estão na planilha, completas, mas **fora do ar** — nada aparece errado para o cliente enquanto você não revisar. É de propósito: preferimos que você ligue um produto bom a que um cliente veja um ruim.
 
 ---
 
@@ -23,10 +25,10 @@ Abra `ferramentas/saida/conferir.csv`. É a fila de revisão, ordenada pelo que 
 
 Priorize nesta ordem:
 
-1. **`sem preco`** (24 linhas) — produto sem preço **não aparece** no site. Ou preencha, ou apague a linha.
-2. **`nome incerto`** — o parser não conseguiu separar nome e descrição com segurança. Vão aparecer coisas como `R$ 80,00 cada` e `Benefícios:Hidratação profunda...` ocupando o lugar do nome. Corrija ou apague.
-3. **`imagem incerta`** — o casamento foto↔produto ficou abaixo do limite de confiança. Vale olhar.
-4. **`sem imagem`** (224 linhas) — o produto funciona sem foto. Deixe para depois e vá preenchendo aos poucos pela página de enviar foto.
+1. **`sem preco`** (23 linhas, todas já `ativo = sim`) — **comece por aqui.** Produto sem preço não aparece no site mesmo estando ativo. Preencha o preço ou marque `ativo = nao`.
+2. **`nome incerto`** (55 linhas) — o parser não separou nome e descrição com segurança. Já estão com `ativo = nao`. Conserte o nome e ligue as boas.
+3. **`imagem incerta`** (33 linhas) — o casamento foto↔produto ficou abaixo do limite de confiança. Confira se a foto é do produto certo.
+4. **`sem imagem`** (173 linhas) — funciona sem foto. Deixe por último e vá preenchendo aos poucos pela página de enviar foto.
 
 > Não tente deixar perfeito agora. O catálogo muda todo mês; parte desses dados já vai ser substituída. O suficiente é ele conseguir assumir daqui pra frente.
 
