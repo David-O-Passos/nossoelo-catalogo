@@ -110,20 +110,35 @@ gh repo create nossoelo-catalogo --public --source=. --push
 No painel da Cloudflare: **Workers & Pages → Create → Pages → Connect to Git** → escolha o repositório.
 
 - Build command: **deixe vazio**
-- Output directory: **`site`**
+- Root directory (advanced): **`site`**
+- Build output directory: **deixe vazio**
 
-Em **Settings → Environment variables**, cadastre:
+> **Atenção com o campo "Root directory".** A pasta `functions/` (o endpoint de envio de foto) só é detectada pelo Cloudflare quando ela está dentro do diretório raiz configurado — não dentro do diretório de saída. Como `site/functions/` fica dentro de `site/`, o raiz do projeto **tem que ser `site`**, e o diretório de saída fica vazio (raiz do raiz). Configurar `Build output directory: site` com o raiz vazio — o caminho mais intuitivo — publica o catálogo normalmente, mas o upload de foto responde **405** em silêncio, porque a função nunca é encontrada. Só se percebe testando o endpoint depois do deploy.
 
-| Variável | Valor |
-|---|---|
-| `SENHA_UPLOAD` | uma frase de quatro palavras sem relação entre si (ex.: `cavalo-lampada-verao-porta`), fácil de digitar no celular e difícil de adivinhar |
-| `GITHUB_TOKEN` | token fine-grained, permissão **Contents: read and write**, só neste repositório |
-| `GITHUB_REPO` | `seu-usuario/nossoelo-catalogo` |
-| `GITHUB_BRANCH` | `main` |
+Em **Settings → Variables and secrets**, cadastre (tipo **Secret** para os dois primeiros, **Text** para os outros):
+
+| Variável | Tipo | Valor |
+|---|---|---|
+| `SENHA_UPLOAD` | Secret | uma frase de quatro palavras sem relação entre si (ex.: `cavalo-lampada-verao-porta`), fácil de digitar no celular e difícil de adivinhar |
+| `GITHUB_TOKEN` | Secret | token fine-grained, permissão **Contents: read and write**, **sem data de expiração** (é usado indefinidamente pela função de upload — um token que expira quebraria o recurso sem aviso), só neste repositório |
+| `GITHUB_REPO` | Text | `seu-usuario/nossoelo-catalogo` |
+| `GITHUB_BRANCH` | Text | `main` |
+
+Depois de cadastrar as variáveis, faça um **"Retry deployment"** no deploy mais recente — secrets e variáveis só valem a partir do próximo deploy, não retroagem no que já está no ar.
 
 > O token do GitHub fica **só** na Cloudflare. Ele nunca chega ao navegador — é exatamente por isso que existe a função `/api/upload` em vez da página falar direto com o GitHub. Não coloque esse token em nenhum arquivo do repositório.
 >
 > `/api/upload` não tem limite de tentativas (rate limiting). Essa frase-senha é a única coisa que protege o envio de fotos — escolha algo que ninguém adivinhe testando palavras óbvias.
+
+**Para confirmar que a função de upload está viva** antes de testar com uma foto de verdade, abra o Console do navegador em `/enviar-foto.html` e rode:
+
+```js
+fetch('/api/upload', {method:'POST', headers:{'content-type':'application/json'},
+  body: JSON.stringify({senha:'errada', nome:'x.webp', conteudoBase64:'AAAA'})})
+  .then(r => r.status).then(console.log)
+```
+
+Resposta esperada: `401` (senha incorreta). Se vier `405`, o `Root directory` está errado — revise o passo acima.
 
 ---
 
