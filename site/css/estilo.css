@@ -193,23 +193,6 @@ body {
   border-radius: 6px;
 }
 
-/* Canto oposto ao selo de desconto: acao deliberada, por isso discreta ate
-   que o dedo passe perto. So ela mexe no link da barra de enderecos. */
-.compartilhar {
-  position: absolute;
-  top: 6px; right: 6px;
-  width: 26px; height: 26px;
-  display: grid;
-  place-items: center;
-  color: var(--suave);
-  background: rgba(255, 255, 255, .85);
-  border: 0;
-  border-radius: 50%;
-  cursor: pointer;
-}
-
-.compartilhar.feito { color: #fff; background: var(--zap); }
-
 .corpo {
   display: flex;
   flex-direction: column;

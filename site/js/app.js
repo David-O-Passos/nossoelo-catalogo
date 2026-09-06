@@ -35,11 +35,6 @@ function cartao(p) {
   el.innerHTML = `
     <div class="moldura">
       ${selo}
-      <button class="compartilhar" type="button" aria-label="Copiar link deste produto" title="Copiar link deste produto">
-        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-          <path fill="currentColor" d="M8.9 12a5 5 0 0 1 5-5h3v2h-3a3 3 0 1 0 0 6h3v2h-3a5 5 0 0 1-5-5Zm2 1h6v-2h-6v2Zm4-5h3a5 5 0 0 1 0 10h-3v-2h3a3 3 0 1 0 0-6h-3V8Z"/>
-        </svg>
-      </button>
       <img src="${src}" alt="${nome}" loading="lazy" decoding="async">
     </div>
     <div class="corpo">
@@ -56,21 +51,6 @@ function cartao(p) {
 
   el.querySelector('img').addEventListener('error', (e) => {
     e.target.src = 'img/placeholder.webp';
-  });
-
-  // So um toque deliberado neste botao (nunca um toque na foto ou no nome,
-  // que e o que a maioria dos cliques realmente sao) grava ?p=<id> na barra
-  // de enderecos. Ja aconteceu de um toque comum virar favorito sem querer e
-  // a pessoa ficar "presa" vendo so aquele produto para sempre - por isso o
-  // link so muda com uma acao explicita, nunca como efeito colateral de olhar
-  // a foto.
-  const compartilhar = el.querySelector('.compartilhar');
-  compartilhar.addEventListener('click', () => {
-    const url = `${location.origin}${location.pathname}?p=${encodeURIComponent(p.id)}`;
-    history.replaceState(null, '', `?p=${encodeURIComponent(p.id)}`);
-    navigator.clipboard?.writeText(url).catch(() => {});
-    compartilhar.classList.add('feito');
-    setTimeout(() => compartilhar.classList.remove('feito'), 1200);
   });
 
   const botao = el.querySelector('.somar');
@@ -223,12 +203,6 @@ async function iniciar() {
     $('#painel-carrinho').showModal();
   });
   $('#fechar-painel').addEventListener('click', () => $('#painel-carrinho').close());
-
-  const alvo = new URLSearchParams(location.search).get('p');
-  if (alvo) {
-    const p = todos.find((x) => x.id === alvo);
-    if (p) $('#busca').value = limparNome(p.nome);
-  }
 
   render();
   atualizarBotaoCarrinho();
