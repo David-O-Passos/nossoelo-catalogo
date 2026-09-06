@@ -109,7 +109,7 @@ Não. O site procura as colunas pelo nome exato. Se você renomear, ele para de 
 Pode. O site vai pelo nome, não pela posição.
 
 **Como mando um produto específico para um cliente?**
-Abra o produto no site e copie o link da barra de endereço. Ele já vem com o produto em destaque.
+Toque no ícone de link, no canto da foto do produto. O link já fica copiado — é só colar na conversa do WhatsApp.
 
 ---
 
