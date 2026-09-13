@@ -186,8 +186,8 @@ function abrirDetalhe(p) {
   abrirDialog($('#detalhe-produto'));
 }
 
-/** Monta uma linha de chips (marca ou categoria), com contagem cruzada com o
- * outro filtro (busca nao entra na conta). Esconde chip com contagem zero,
+/** Monta uma linha de chips (marca ou categoria), cruzada com o outro filtro
+ * (busca nao entra na conta). Esconde chip sem produto no filtro atual,
  * exceto o que estiver ativo. Preserva o scroll horizontal da linha. */
 function montarChipsGenerico(nav, valores, ativoAtual, contagem, aoEscolher) {
   const scrollAnterior = nav.scrollLeft;
@@ -201,7 +201,7 @@ function montarChipsGenerico(nav, valores, ativoAtual, contagem, aoEscolher) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'chip';
-    b.textContent = valor === '' ? rotuloBase : `${rotuloBase} · ${quantidade}`;
+    b.textContent = rotuloBase;
     b.setAttribute('aria-pressed', String(valor === ativoAtual));
     b.addEventListener('click', () => {
       aoEscolher(valor);
