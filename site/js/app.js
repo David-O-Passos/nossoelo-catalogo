@@ -95,6 +95,23 @@ function cartao(p) {
   return el;
 }
 
+/** Clique fora do conteudo (no ::backdrop) e a tecla Esc ja chegam aqui como
+ * 'close' nativo do <dialog> — so precisamos travar/destravar a rolagem da
+ * pagina de baixo e fechar ao clicar fora, sem depender de um botao "Fechar". */
+function prepararDialog(dialog) {
+  dialog.addEventListener('click', (e) => {
+    if (e.target === dialog) dialog.close();
+  });
+  dialog.addEventListener('close', () => {
+    document.body.classList.remove('sem-rolagem');
+  });
+}
+
+function abrirDialog(dialog) {
+  document.body.classList.add('sem-rolagem');
+  dialog.showModal();
+}
+
 /** Preenche e abre o dialog de detalhe do produto (clicar para ver a descrição). */
 function abrirDetalhe(p) {
   const nome = limparNome(p.nome);
@@ -119,7 +136,7 @@ function abrirDetalhe(p) {
     $('#detalhe-produto').close();
   };
 
-  $('#detalhe-produto').showModal();
+  abrirDialog($('#detalhe-produto'));
 }
 
 /** Monta uma linha de chips (marca ou categoria); aoEscolher recebe o valor clicado. */
@@ -242,12 +259,14 @@ async function iniciar() {
   $('#busca').addEventListener('input', render);
   $('#ordem').addEventListener('change', render);
 
+  prepararDialog($('#painel-carrinho'));
+  prepararDialog($('#detalhe-produto'));
+
   $('#abrir-carrinho').addEventListener('click', () => {
     renderCarrinho();
-    $('#painel-carrinho').showModal();
+    abrirDialog($('#painel-carrinho'));
   });
   $('#fechar-painel').addEventListener('click', () => $('#painel-carrinho').close());
-  $('#fechar-detalhe').addEventListener('click', () => $('#detalhe-produto').close());
 
   render();
   atualizarBotaoCarrinho();

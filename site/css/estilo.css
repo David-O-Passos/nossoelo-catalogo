@@ -439,18 +439,27 @@ body {
 /* ---------- Detalhe do produto (clicar para ver descrição) ---------- */
 
 #detalhe-produto {
-  width: min(520px, 100vw);
-  max-height: 88vh;
-  margin: auto auto 0;
-  padding: 20px 18px calc(20px + env(safe-area-inset-bottom, 0px));
+  width: min(420px, 92vw);
+  max-height: 85vh;
+  margin: auto;
+  padding: 20px 18px;
   color: var(--tinta);
   background: var(--fundo);
   border: 0;
-  border-radius: 18px 18px 0 0;
+  border-radius: 18px;
   overflow-y: auto;
 }
 
-#detalhe-produto::backdrop { background: rgba(25, 21, 18, .5); }
+#detalhe-produto::backdrop {
+  background: rgba(25, 21, 18, .45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* Enquanto um dialog esta aberto (modal ou carrinho), trava a rolagem da
+   pagina por baixo — sem isto o dedo no celular rola os produtos atras do
+   modal ao mesmo tempo que o modal, o que confunde o cliente. */
+body.sem-rolagem { overflow: hidden; }
 
 .detalhe-imagem-caixa {
   position: relative;
