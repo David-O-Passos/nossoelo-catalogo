@@ -79,12 +79,15 @@ test('marcaLimpa sem correspondencia devolve vazio', () => {
   assert.equal(marcaLimpa('Marca Desconhecida'), '');
 });
 
-test('categoriaLimpa reconhece as 7 categorias fixas', () => {
+test('categoriaLimpa so apara espaco: quem garante o texto limpo e o dropdown da planilha', () => {
   assert.equal(categoriaLimpa('Perfumaria Masculina'), 'Perfumaria Masculina');
-  assert.equal(categoriaLimpa('cabelos'), 'Cabelos');
-  assert.equal(categoriaLimpa('KITS & PRESENTES'), 'Kits & Presentes');
+  assert.equal(categoriaLimpa('  Cabelos  '), 'Cabelos');
+  // Categoria nova que o dono cadastrar na aba "Categorias" do Sheets
+  // precisa funcionar sem o codigo conhecer o nome dela de antemao.
+  assert.equal(categoriaLimpa('Capilar'), 'Capilar');
 });
 
-test('categoriaLimpa sem correspondencia devolve vazio', () => {
-  assert.equal(categoriaLimpa('Categoria Inventada'), '');
+test('categoriaLimpa sem valor devolve vazio', () => {
+  assert.equal(categoriaLimpa(''), '');
+  assert.equal(categoriaLimpa(undefined), '');
 });

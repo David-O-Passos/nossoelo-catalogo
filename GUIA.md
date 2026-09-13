@@ -65,7 +65,7 @@ Crie uma linha nova e preencha:
 | **ativo** | `sim` | `sim` |
 | **esgotado** | `nao` (só vira `sim` quando faltar estoque) | `nao` |
 | **marca** | uma das marcas da lista abaixo | `Natura` |
-| **categoria** | uma das categorias da lista abaixo | `Perfumaria Masculina` |
+| **categoria** | clique na célula e escolha no menu suspenso | `Perfumaria Masculina` |
 | **nome** | o nome do produto | `Kaiak Oceano` |
 | **tamanho** | o tamanho | `100 ml` |
 | **descricao** | notas, benefícios (aparece quando o cliente clica no produto) | `Amadeirado aquoso` |
@@ -79,7 +79,10 @@ Crie uma linha nova e preencha:
 
 **Marcas.** Use exatamente um destes nomes na coluna `marca`, para o filtro do site reconhecer: `Natura`, `Boticário`, `Eudora`, `Avon`, `Árabes` (inclui Lattafa e outras marcas árabes), `Ciclo`.
 
-**Categorias.** Use exatamente uma destas na coluna `categoria`: `Kits & Presentes`, `Perfumaria Masculina`, `Perfumaria Feminina`, `Corpo & Banho`, `Cabelos`, `Maquiagem & Beleza`, `Linha Infantil & Kids`.
+**Categorias.** A coluna `categoria` tem um menu suspenso — clique na célula e escolha uma opção, não precisa digitar. A lista de opções vem da aba **Categorias** da planilha:
+
+- **Categoria nova:** vá na aba Categorias e escreva o nome numa linha em branco. Ela aparece na hora no menu suspenso da coluna categoria, em qualquer produto.
+- **Renomear uma categoria já usada:** troque o nome na aba Categorias. Os produtos que já usavam o nome antigo **não mudam sozinhos** — ficam marcados com um aviso vermelho de "valor inválido". Para corrigir todos de uma vez: na aba de produtos, selecione a coluna categoria, `Ctrl+H` (Localizar e substituir), coloque o nome antigo em "Localizar" e o novo em "Substituir por", restrinja ao intervalo da coluna e clique em "Substituir tudo".
 
 ---
 

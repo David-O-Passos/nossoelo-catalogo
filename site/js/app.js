@@ -1,7 +1,7 @@
 import { carregarProdutos } from './dados.js';
 import { Carrinho, reais } from './carrinho.js';
 import {
-  buscar, ordenar, marcaLimpa, CATEGORIAS, categoriaLimpa,
+  buscar, ordenar, marcaLimpa, categoriaLimpa,
 } from './catalogo.js';
 
 const $ = (s) => document.querySelector(s);
@@ -149,7 +149,7 @@ function montarChips() {
   montarChipsGenerico($('#chips'), marcas, marcaAtiva, (v) => { marcaAtiva = v; });
 
   const categorias = [...new Set(todos.map((p) => categoriaLimpa(p.categoria)).filter(Boolean))]
-    .sort((a, b) => CATEGORIAS.indexOf(a) - CATEGORIAS.indexOf(b));
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
   montarChipsGenerico($('#chips-categoria'), categorias, categoriaAtiva, (v) => { categoriaAtiva = v; });
 }
 

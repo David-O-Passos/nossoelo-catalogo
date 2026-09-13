@@ -27,28 +27,13 @@ export function marcaLimpa(rotulo) {
   return '';
 }
 
-export const CATEGORIAS = [
-  'Kits & Presentes',
-  'Perfumaria Masculina',
-  'Perfumaria Feminina',
-  'Corpo & Banho',
-  'Cabelos',
-  'Maquiagem & Beleza',
-  'Linha Infantil & Kids',
-];
-
-function chaveCategoria(categoria) {
-  return normalizar(categoria).replace(/[^a-z0-9]+/g, ' ').trim();
-}
-
+// A coluna "categoria" da planilha tem menu suspenso (validacao de dados
+// presa a aba "Categorias" do Sheets, que rejeita valor fora da lista), entao
+// o texto ja chega limpo — sem acento/maiuscula bagunçados como a marca.
+// Por isso, ao contrario de marcaLimpa, aqui so aparamos espaco: quem decide
+// a lista de categorias e a aba "Categorias" da planilha, nao o codigo.
 export function categoriaLimpa(rotulo) {
-  const plano = chaveCategoria(rotulo);
-  for (const categoria of CATEGORIAS) {
-    if (plano === chaveCategoria(categoria) || plano.includes(chaveCategoria(categoria))) {
-      return categoria;
-    }
-  }
-  return '';
+  return String(rotulo || '').trim();
 }
 
 function textoBuscavel(p) {
