@@ -90,22 +90,77 @@ export class Carrinho {
     return avisos;
   }
 
+  /** Uma linha de item da mensagem, com preco unitario quando ha mais de 1. */
+  _linhaItem(i) {
+    // A marca entra no nome, nao depois do tamanho: sem ela, "Pós Química"
+    // chega ambigua para quem vende a mesma linha em mais de uma marca.
+    const nome = [i.nome, i.marca && `(${i.marca})`, i.tamanho].filter(Boolean).join(' ');
+    const cada = i.quantidade > 1 ? ` (R$ ${reais(i.precoPor)} cada)` : '';
+    return `${i.quantidade}x ${nome} — R$ ${reais(i.precoPor * i.quantidade)}${cada}`;
+  }
+
   montarMensagem() {
     if (!this._itens.length) return 'Olá! Gostaria de fazer um pedido.';
-    const linhas = this._itens.map((i) => {
-      // A marca entra no nome, nao depois do tamanho: sem ela, "Pós Química"
-      // chega ambigua para quem vende a mesma linha em mais de uma marca.
-      const nome = [i.nome, i.marca && `(${i.marca})`, i.tamanho].filter(Boolean).join(' ');
-      return `${i.quantidade}x ${nome} — R$ ${reais(i.precoPor * i.quantidade)}`;
-    });
+    const linhas = this._itens.map((i) => this._linhaItem(i));
     return `Olá! Quero fazer um pedido:\n\n${linhas.join('\n')}\n\nTotal: R$ ${reais(this.total())}`;
   }
 
+  /** Divide o pedido em varias mensagens quando ele nao cabe numa so, para o
+   * cliente poder mandar uma de cada vez pelo WhatsApp sem cortar texto.
+   * Empacota gulosamente reservando, em toda parte, espaco para o cabecalho
+   * "parte X de N" no seu tamanho maximo possivel e para a linha de Total —
+   * assim, quando so a ultima parte realmente leva o Total, ela ja cabe. */
+  mensagens() {
+    if (!this._itens.length) return ['Olá! Gostaria de fazer um pedido.'];
+
+    const completa = this.montarMensagem();
+    if (encodeURIComponent(completa).length <= LIMITE_MENSAGEM) return [completa];
+
+    const linhas = this._itens.map((i) => this._linhaItem(i));
+    const totalLinha = `Total: R$ ${reais(this.total())}`;
+    // Numero de partes nunca passa do numero de itens (1 por parte, no pior
+    // caso); usar isso como X e N do cabecalho durante o empacotamento cobre
+    // o tamanho maximo que o cabecalho real vai ter.
+    const nMax = linhas.length;
+    const cabe = (linhasDaParte) => {
+      const cabecalho = `Olá! Quero fazer um pedido (parte ${nMax} de ${nMax}):`;
+      const texto = `${cabecalho}\n\n${linhasDaParte.join('\n')}\n\n${totalLinha}`;
+      return encodeURIComponent(texto).length <= LIMITE_MENSAGEM;
+    };
+
+    const partes = [];
+    let atual = [];
+    for (const linha of linhas) {
+      const tentativa = [...atual, linha];
+      if (atual.length && !cabe(tentativa)) {
+        partes.push(atual);
+        atual = [linha];
+      } else {
+        atual = tentativa;
+      }
+    }
+    if (atual.length) partes.push(atual);
+
+    return partes.map((linhasDaParte, indice) => {
+      const cabecalho = `Olá! Quero fazer um pedido (parte ${indice + 1} de ${partes.length}):`;
+      const corpo = linhasDaParte.join('\n');
+      const ehUltima = indice === partes.length - 1;
+      return ehUltima
+        ? `${cabecalho}\n\n${corpo}\n\n${totalLinha}`
+        : `${cabecalho}\n\n${corpo}`;
+    });
+  }
+
   mensagemLonga() {
-    return encodeURIComponent(this.montarMensagem()).length > LIMITE_MENSAGEM;
+    return this.mensagens().length > 1;
   }
 
   linkWhatsApp() {
     return `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(this.montarMensagem())}`;
+  }
+
+  /** Um link wa.me por parte de mensagens(), na mesma ordem. */
+  linksWhatsApp() {
+    return this.mensagens().map((m) => `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(m)}`);
   }
 }

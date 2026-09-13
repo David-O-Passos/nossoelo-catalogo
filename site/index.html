@@ -6,8 +6,19 @@
 <meta name="theme-color" content="#6d2e46">
 <title>NOSSO.ELO — Catálogo</title>
 <meta name="description" content="Catálogo de perfumaria e cosméticos. Monte seu pedido e envie pelo WhatsApp.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Nosso.Elo">
+<meta property="og:title" content="Nosso.Elo — Perfumaria &amp; Cosméticos">
+<meta property="og:description" content="Catálogo de perfumaria e cosméticos Natura, O Boticário, Eudora, Avon e mais. Monte seu pedido e envie pelo WhatsApp.">
+<meta property="og:url" content="https://nossoelo-catalogo.pages.dev/">
+<meta property="og:image" content="https://nossoelo-catalogo.pages.dev/img/og-capa.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="pt_BR">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icone.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="stylesheet" href="css/estilo.css">
 </head>
 <body>
@@ -17,24 +28,29 @@
     <h1>Nosso<span>.</span>Elo</h1>
     <p class="lema">Perfumaria &amp; cosméticos</p>
   </div>
-
-  <div class="busca-caixa">
-    <svg class="lupa" viewBox="0 0 20 20" aria-hidden="true">
-      <circle cx="9" cy="9" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
-      <path d="M13.5 13.5 18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-    </svg>
-    <input id="busca" type="search" placeholder="Buscar perfume, marca, fragrância"
-           autocomplete="off" aria-label="Buscar no catálogo">
-  </div>
-
-  <nav id="chips" class="chips" aria-label="Filtrar por marca"></nav>
-  <nav id="chips-categoria" class="chips chips-categoria" aria-label="Filtrar por categoria"></nav>
 </header>
+
+<div class="barra-filtros">
+  <div class="barra-filtros-caixa">
+    <div class="busca-caixa">
+      <svg class="lupa" viewBox="0 0 20 20" aria-hidden="true">
+        <circle cx="9" cy="9" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
+        <path d="M13.5 13.5 18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <input id="busca" type="search" placeholder="Buscar perfume, marca, fragrância"
+             autocomplete="off" aria-label="Buscar no catálogo">
+      <button id="limpar-busca" type="button" class="limpar-busca" aria-label="Limpar busca" hidden>&times;</button>
+    </div>
+
+    <nav id="chips" class="chips" aria-label="Filtrar por marca"></nav>
+    <nav id="chips-categoria" class="chips chips-categoria" aria-label="Filtrar por categoria"></nav>
+  </div>
+</div>
 
 <div id="avisos" class="avisos" hidden></div>
 
 <div class="barra-resultado">
-  <p id="contador" class="contador"></p>
+  <p id="contador" class="contador" aria-live="polite"></p>
   <label class="ordenar">
     <span class="sr-only">Ordenar por</span>
     <select id="ordem">
@@ -46,8 +62,11 @@
   </label>
 </div>
 
-<main id="grade" class="grade" aria-live="polite"></main>
-<p id="vazio" class="vazio" hidden>Nenhum produto encontrado. Tente outra palavra.</p>
+<main id="grade" class="grade"></main>
+<div id="vazio" class="vazio" hidden>
+  <p>Nenhum produto com esses filtros.</p>
+  <button id="limpar-filtros" type="button">Limpar filtros</button>
+</div>
 <div id="falha-carregar" class="vazio" hidden>
   <p>Não consegui carregar o catálogo agora. Confira sua internet e tente de novo.</p>
   <button id="tentar-de-novo" type="button" class="botao-enviar">Tentar de novo</button>
@@ -67,11 +86,16 @@
   <ul id="lista-carrinho"></ul>
   <p class="total-final">Total <strong>R$ <span id="total-final">0,00</span></strong></p>
   <p id="aviso-longo" class="aviso-longo" hidden>
-    Seu pedido ficou grande para uma mensagem só. Envie em duas partes.
+    Seu pedido ficou grande: envie as partes em ordem, uma de cada vez.
   </p>
   <a id="enviar-whatsapp" class="botao-enviar" href="#" target="_blank" rel="noopener">
     Enviar pedido pelo WhatsApp
   </a>
+  <div id="enviar-partes" class="enviar-partes" hidden></div>
+  <p id="pos-envio" class="pos-envio" hidden>
+    Já mandou o pedido?
+    <button id="esvaziar-pedido" type="button" class="botao-link">Esvaziar pedido</button>
+  </p>
   <button id="fechar-painel" class="botao-secundario">Continuar escolhendo</button>
 </dialog>
 
@@ -86,6 +110,8 @@
   <p id="detalhe-descricao" class="detalhe-descricao"></p>
   <button id="detalhe-somar" type="button" class="botao-enviar">Adicionar ao pedido</button>
 </dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script type="module" src="js/app.js"></script>
 </body>

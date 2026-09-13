@@ -1,7 +1,7 @@
 import { carregarProdutos } from './dados.js';
 import { Carrinho, reais } from './carrinho.js';
 import {
-  buscar, ordenar, marcaLimpa, categoriaLimpa,
+  buscar, ordenar, marcaLimpa, categoriaLimpa, contarPor,
 } from './catalogo.js';
 
 const $ = (s) => document.querySelector(s);
@@ -10,6 +10,11 @@ const carrinho = new Carrinho();
 let todos = [];
 let marcaAtiva = '';
 let categoriaAtiva = '';
+// Lista mestra de marcas/categorias: calculada uma vez do catalogo completo,
+// para o chip continuar existindo (ainda que com contagem zero) mesmo quando
+// o filtro atual esconde todos os produtos dele.
+let marcasTodas = [];
+let categoriasTodas = [];
 
 /** Escapa texto vindo da planilha antes de ir para innerHTML. */
 function escapar(texto) {
@@ -28,6 +33,31 @@ function trocarPorPlaceholder(e) {
 /** Tira sobras da conversao do Word: hifen ou ponto solto no fim do nome. */
 function limparNome(nome) {
   return String(nome || '').replace(/[\s\-–—.,;:]+$/, '').trim();
+}
+
+/** Espera o cliente parar de digitar antes de rodar a funcao — sem isto, uma
+ * busca rapida re-renderiza a grade inteira a cada tecla. */
+function debounce(fn, ms) {
+  let temporizador;
+  return (...args) => {
+    clearTimeout(temporizador);
+    temporizador = setTimeout(() => fn(...args), ms);
+  };
+}
+
+let temporizadorToast = null;
+/** Confirmacao curta e sumida sozinha, para acoes fora do card (ex.: dialog
+ * de detalhe) onde nao ha um botao proprio para mostrar o "✓". */
+function mostrarToast(texto) {
+  const el = $('#toast');
+  el.textContent = texto;
+  el.hidden = false;
+  requestAnimationFrame(() => el.classList.add('mostrar'));
+  clearTimeout(temporizadorToast);
+  temporizadorToast = setTimeout(() => {
+    el.classList.remove('mostrar');
+    setTimeout(() => { el.hidden = true; }, 200);
+  }, 1800);
 }
 
 function cartao(p) {
@@ -80,7 +110,6 @@ function cartao(p) {
   });
   const titulo = el.querySelector('h3');
   titulo.addEventListener('click', abrirEsteDetalhe);
-  titulo.style.cursor = 'pointer';
 
   const botao = el.querySelector('.somar');
   botao.addEventListener('click', (e) => {
@@ -151,43 +180,66 @@ function abrirDetalhe(p) {
     carrinho.adicionar({ ...p, nome, marca });
     atualizarBotaoCarrinho();
     $('#detalhe-produto').close();
+    mostrarToast('Adicionado ao pedido');
   };
 
   abrirDialog($('#detalhe-produto'));
 }
 
-/** Monta uma linha de chips (marca ou categoria); aoEscolher recebe o valor clicado. */
-function montarChipsGenerico(nav, valores, ativoAtual, aoEscolher) {
+/** Monta uma linha de chips (marca ou categoria), com contagem cruzada com o
+ * outro filtro (busca nao entra na conta). Esconde chip com contagem zero,
+ * exceto o que estiver ativo. Preserva o scroll horizontal da linha. */
+function montarChipsGenerico(nav, valores, ativoAtual, contagem, aoEscolher) {
+  const scrollAnterior = nav.scrollLeft;
   nav.replaceChildren();
-  for (const [valor, rotulo] of [['', 'Tudo'], ...valores.map((v) => [v, v])]) {
+
+  const itens = [['', 'Tudo'], ...valores.map((v) => [v, v])];
+  for (const [valor, rotuloBase] of itens) {
+    const quantidade = valor === '' ? null : (contagem.get(valor) || 0);
+    if (valor !== '' && quantidade === 0 && valor !== ativoAtual) continue;
+
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'chip';
-    b.textContent = rotulo;
+    b.textContent = valor === '' ? rotuloBase : `${rotuloBase} · ${quantidade}`;
     b.setAttribute('aria-pressed', String(valor === ativoAtual));
     b.addEventListener('click', () => {
       aoEscolher(valor);
-      for (const outro of nav.children) outro.setAttribute('aria-pressed', 'false');
-      b.setAttribute('aria-pressed', 'true');
       render();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
     nav.appendChild(b);
   }
+
+  nav.scrollLeft = scrollAnterior;
 }
 
+/** Reconstroi os chips a cada render (nao so uma vez): a contagem de cada
+ * marca depende da categoria ativa e vice-versa. */
+function renderChips() {
+  const porCategoria = categoriaAtiva
+    ? todos.filter((p) => categoriaLimpa(p.categoria) === categoriaAtiva) : todos;
+  const porMarca = marcaAtiva
+    ? todos.filter((p) => marcaLimpa(p.marca) === marcaAtiva) : todos;
 
-function montarChips() {
-  const marcas = [...new Set(todos.map((p) => marcaLimpa(p.marca)).filter(Boolean))]
-    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
-  montarChipsGenerico($('#chips'), marcas, marcaAtiva, (v) => { marcaAtiva = v; });
+  const contagemMarcas = contarPor(porCategoria, (p) => marcaLimpa(p.marca));
+  const contagemCategorias = contarPor(porMarca, (p) => categoriaLimpa(p.categoria));
 
-  const categorias = [...new Set(todos.map((p) => categoriaLimpa(p.categoria)).filter(Boolean))]
-    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
-  montarChipsGenerico($('#chips-categoria'), categorias, categoriaAtiva, (v) => { categoriaAtiva = v; });
+  montarChipsGenerico($('#chips'), marcasTodas, marcaAtiva, contagemMarcas, (v) => { marcaAtiva = v; });
+  montarChipsGenerico(
+    $('#chips-categoria'), categoriasTodas, categoriaAtiva, contagemCategorias,
+    (v) => { categoriaAtiva = v; },
+  );
+}
+
+function atualizarBotaoLimparBusca() {
+  $('#limpar-busca').hidden = !$('#busca').value;
 }
 
 function render() {
+  renderChips();
+  atualizarBotaoLimparBusca();
+
   let visiveis = todos;
   if (marcaAtiva) visiveis = visiveis.filter((p) => marcaLimpa(p.marca) === marcaAtiva);
   if (categoriaAtiva) visiveis = visiveis.filter((p) => categoriaLimpa(p.categoria) === categoriaAtiva);
@@ -238,18 +290,49 @@ function renderCarrinho() {
       carrinho.definirQuantidade(item.id, parseInt(e.target.value, 10) || 0);
       renderCarrinho();
       atualizarBotaoCarrinho();
+      if (!carrinho.itens().length) $('#painel-carrinho').close();
     });
     li.querySelector('.tirar').addEventListener('click', () => {
       carrinho.remover(item.id);
       renderCarrinho();
       atualizarBotaoCarrinho();
+      if (!carrinho.itens().length) $('#painel-carrinho').close();
     });
     ul.appendChild(li);
   }
 
   $('#total-final').textContent = reais(carrinho.total());
-  $('#aviso-longo').hidden = !carrinho.mensagemLonga();
-  $('#enviar-whatsapp').href = carrinho.linkWhatsApp();
+
+  const partes = carrinho.mensagens();
+  const links = carrinho.linksWhatsApp();
+  $('#aviso-longo').hidden = partes.length <= 1;
+
+  if (partes.length > 1) {
+    $('#enviar-whatsapp').hidden = true;
+    const container = $('#enviar-partes');
+    container.hidden = false;
+    container.replaceChildren(...links.map((link, i) => {
+      const a = document.createElement('a');
+      a.className = 'botao-enviar';
+      a.href = link;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = `Enviar parte ${i + 1} de ${links.length}`;
+      a.addEventListener('click', marcarComoEnviado);
+      return a;
+    }));
+  } else {
+    $('#enviar-whatsapp').hidden = false;
+    $('#enviar-whatsapp').href = links[0];
+    $('#enviar-partes').hidden = true;
+    $('#enviar-partes').replaceChildren();
+  }
+}
+
+/** Mostra "Já mandou o pedido?" depois que o cliente tocou em algum link de
+ * envio — so ai faz sentido oferecer esvaziar o pedido. */
+function marcarComoEnviado() {
+  $('#pos-envio').hidden = false;
 }
 
 async function iniciar() {
@@ -280,19 +363,43 @@ async function iniciar() {
     $('#avisos').textContent = avisos.join(' ');
   }
 
-  montarChips();
+  marcasTodas = [...new Set(todos.map((p) => marcaLimpa(p.marca)).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  categoriasTodas = [...new Set(todos.map((p) => categoriaLimpa(p.categoria)).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
-  $('#busca').addEventListener('input', render);
+  $('#busca').addEventListener('input', () => {
+    atualizarBotaoLimparBusca();
+  });
+  $('#busca').addEventListener('input', debounce(render, 150));
+  $('#limpar-busca').addEventListener('click', () => {
+    $('#busca').value = '';
+    render();
+    $('#busca').focus();
+  });
+  $('#limpar-filtros').addEventListener('click', () => {
+    $('#busca').value = '';
+    marcaAtiva = '';
+    categoriaAtiva = '';
+    render();
+  });
   $('#ordem').addEventListener('change', render);
 
   prepararDialog($('#painel-carrinho'));
   prepararDialog($('#detalhe-produto'));
 
   $('#abrir-carrinho').addEventListener('click', () => {
+    $('#pos-envio').hidden = true;
     renderCarrinho();
     abrirDialog($('#painel-carrinho'));
   });
   $('#fechar-painel').addEventListener('click', () => $('#painel-carrinho').close());
+  $('#enviar-whatsapp').addEventListener('click', marcarComoEnviado);
+  $('#esvaziar-pedido').addEventListener('click', () => {
+    carrinho.limpar();
+    atualizarBotaoCarrinho();
+    $('#painel-carrinho').close();
+  });
 
   render();
   atualizarBotaoCarrinho();

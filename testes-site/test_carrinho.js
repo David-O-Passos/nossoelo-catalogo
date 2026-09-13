@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Carrinho } from '../site/js/carrinho.js';
+import { LIMITE_MENSAGEM } from '../site/js/config.js';
 
 function memoria() {
   const d = {};
@@ -130,6 +131,65 @@ test('mensagemLonga acusa quando passa do limite', () => {
     c.adicionar({ id: 'p' + i, nome: 'Produto de nome bem comprido ' + i, tamanho: '100 ml', precoPor: 50 });
   }
   assert.equal(c.mensagemLonga(), true);
+});
+
+test('a mensagem mostra o preco unitario entre parenteses quando ha mais de 1 unidade', () => {
+  const c = new Carrinho(memoria());
+  c.adicionar(kaiak, 2);
+  const m = c.montarMensagem();
+  assert.match(m, /2x Kaiak Aventura 100 ml — R\$ 220,00 \(R\$ 110,00 cada\)/);
+});
+
+test('a mensagem nao mostra "cada" quando so tem 1 unidade', () => {
+  const c = new Carrinho(memoria());
+  c.adicionar(kaiak, 1);
+  assert.doesNotMatch(c.montarMensagem(), /cada/);
+});
+
+test('mensagens() devolve so a mensagem inteira quando ela cabe no limite', () => {
+  const c = new Carrinho(memoria());
+  c.adicionar(kaiak);
+  assert.deepEqual(c.mensagens(), [c.montarMensagem()]);
+});
+
+test('mensagens() quebra pedido grande em varias partes, todas dentro do limite', () => {
+  const c = new Carrinho(memoria());
+  for (let i = 0; i < 200; i++) {
+    c.adicionar({ id: 'p' + i, nome: 'Produto de nome bem comprido numero ' + i, tamanho: '100 ml', precoPor: 50 });
+  }
+  const partes = c.mensagens();
+  assert.ok(partes.length > 1);
+  for (const parte of partes) {
+    assert.ok(encodeURIComponent(parte).length <= LIMITE_MENSAGEM);
+  }
+});
+
+test('mensagens() inclui cada item uma unica vez, e o Total so na ultima parte', () => {
+  const c = new Carrinho(memoria());
+  for (let i = 0; i < 200; i++) {
+    c.adicionar({ id: 'p' + i, nome: 'Produto de nome bem comprido numero ' + i, tamanho: '100 ml', precoPor: 50 });
+  }
+  const partes = c.mensagens();
+  for (let i = 0; i < 200; i++) {
+    const ocorrencias = partes.filter((p) => p.includes(`Produto de nome bem comprido numero ${i} 100 ml`)).length;
+    assert.equal(ocorrencias, 1, `item ${i} deveria aparecer exatamente uma vez`);
+  }
+  const comTotal = partes.filter((p) => p.includes('Total: R$'));
+  assert.deepEqual(comTotal, [partes[partes.length - 1]]);
+});
+
+test('linksWhatsApp() devolve um link por parte de mensagens()', () => {
+  const c = new Carrinho(memoria());
+  for (let i = 0; i < 200; i++) {
+    c.adicionar({ id: 'p' + i, nome: 'Produto de nome bem comprido numero ' + i, tamanho: '100 ml', precoPor: 50 });
+  }
+  const partes = c.mensagens();
+  const links = c.linksWhatsApp();
+  assert.equal(links.length, partes.length);
+  links.forEach((link, i) => {
+    assert.ok(link.startsWith('https://wa.me/5573981139437?text='));
+    assert.equal(decodeURIComponent(link.split('?text=')[1]), partes[i]);
+  });
 });
 
 test('carrinho vazio tem total zero e nao quebra a mensagem', () => {

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  normalizar, buscar, filtrar, ordenar, agrupar, marcaLimpa, categoriaLimpa,
+  normalizar, buscar, filtrar, ordenar, agrupar, marcaLimpa, categoriaLimpa, contarPor,
 } from '../site/js/catalogo.js';
 
 const produtos = [
@@ -75,8 +75,17 @@ test('marcaLimpa engloba Lattafa e variações de "árabe" sob Árabes', () => {
   assert.equal(marcaLimpa('Perfume Árabe Importado'), 'Árabes');
 });
 
-test('marcaLimpa sem correspondencia devolve vazio', () => {
-  assert.equal(marcaLimpa('Marca Desconhecida'), '');
+test('marcaLimpa sem correspondencia devolve o texto original', () => {
+  assert.equal(marcaLimpa('Marca Desconhecida'), 'Marca Desconhecida');
+});
+
+test('marcaLimpa aceita marca nova que ainda nao esta no mapa de palavras-chave', () => {
+  assert.equal(marcaLimpa('Jequiti'), 'Jequiti');
+});
+
+test('marcaLimpa com texto vazio continua devolvendo vazio', () => {
+  assert.equal(marcaLimpa(''), '');
+  assert.equal(marcaLimpa(undefined), '');
 });
 
 test('categoriaLimpa so apara espaco: quem garante o texto limpo e o dropdown da planilha', () => {
@@ -90,4 +99,26 @@ test('categoriaLimpa so apara espaco: quem garante o texto limpo e o dropdown da
 test('categoriaLimpa sem valor devolve vazio', () => {
   assert.equal(categoriaLimpa(''), '');
   assert.equal(categoriaLimpa(undefined), '');
+});
+
+test('busca encontra marca arabe sob o nome limpo "arabes", mesmo cadastrada como Lattafa', () => {
+  const comLattafa = [...produtos, {
+    id: '4', nome: 'Khamrah', marca: 'Lattafa', categoria: 'Unissex', tamanho: '100 ml', descricao: 'Amadeirado', precoPor: 90,
+  }];
+  assert.equal(buscar(comLattafa, 'arabes')[0].id, '4');
+});
+
+test('contarPor conta ocorrencias por chave, ignorando valor falso', () => {
+  const dados = [{ marca: 'Natura' }, { marca: 'Natura' }, { marca: 'Eudora' }, { marca: '' }, {}];
+  const contagem = contarPor(dados, 'marca');
+  assert.equal(contagem.get('Natura'), 2);
+  assert.equal(contagem.get('Eudora'), 1);
+  assert.equal(contagem.has(''), false);
+  assert.equal(contagem.has(undefined), false);
+});
+
+test('contarPor aceita uma funcao extratora no lugar do nome da chave', () => {
+  const contagem = contarPor(produtos, (p) => p.categoria);
+  assert.equal(contagem.get('Feminino'), 2);
+  assert.equal(contagem.get('Masculino'), 1);
 });

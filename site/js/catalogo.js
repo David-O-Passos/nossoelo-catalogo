@@ -24,7 +24,10 @@ export function marcaLimpa(rotulo) {
   for (const [marca, chaves] of Object.entries(MARCAS)) {
     if (chaves.some((chave) => plano.includes(chave))) return marca;
   }
-  return '';
+  // Marca nova que ainda nao esta no mapa de palavras-chave: em vez de sumir
+  // (retornar vazio), mostra o texto original — assim o dono cadastra uma
+  // marca nova na planilha e ela ja aparece nos chips sem mexer no codigo.
+  return String(rotulo || '').trim();
 }
 
 // A coluna "categoria" da planilha tem menu suspenso (validacao de dados
@@ -37,7 +40,9 @@ export function categoriaLimpa(rotulo) {
 }
 
 function textoBuscavel(p) {
-  return normalizar([p.nome, p.marca, p.categoria, p.tamanho, p.descricao].join(' '));
+  return normalizar(
+    [p.nome, p.marca, marcaLimpa(p.marca), p.categoria, p.tamanho, p.descricao].join(' '),
+  );
 }
 
 /** Todas as palavras do termo precisam aparecer no produto. */
@@ -67,6 +72,19 @@ export function ordenar(produtos, criterio) {
     return copia.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   }
   return copia;
+}
+
+/** Map<valor, quantidade> contando produtos[chave] (ou chave(produto), se
+ * for funcao), ignorando valor falso. */
+export function contarPor(produtos, chave) {
+  const extrair = typeof chave === 'function' ? chave : (p) => p[chave];
+  const contagem = new Map();
+  for (const p of produtos) {
+    const valor = extrair(p);
+    if (!valor) continue;
+    contagem.set(valor, (contagem.get(valor) || 0) + 1);
+  }
+  return contagem;
 }
 
 /** Map<marca, Map<categoria, produtos[]>>, preservando ordem de aparicao. */
