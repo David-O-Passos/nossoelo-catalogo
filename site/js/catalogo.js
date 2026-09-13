@@ -7,6 +7,50 @@ export function normalizar(texto) {
     .trim();
 }
 
+// O rotulo de marca vem de cabecalhos do Word e chega sujo ("Eudora H Ready
+// 100ml", "Natura VEVE"). Reduzimos ao nome da marca que aparece dentro dele.
+// "\u00c1rabes" e um guarda-chuva: engloba Lattafa e qualquer outra marca arabe.
+export const MARCAS = {
+  'Natura': ['natura'],
+  'O Botic\u00e1rio': ['boticario'],
+  'Avon': ['avon'],
+  'Eudora': ['eudora'],
+  '\u00c1rabes': ['arabe', 'arabes', 'lattafa'],
+  'Ciclo': ['ciclo'],
+};
+
+export function marcaLimpa(rotulo) {
+  const plano = normalizar(rotulo);
+  for (const [marca, chaves] of Object.entries(MARCAS)) {
+    if (chaves.some((chave) => plano.includes(chave))) return marca;
+  }
+  return '';
+}
+
+export const CATEGORIAS = [
+  'Kits & Presentes',
+  'Perfumaria Masculina',
+  'Perfumaria Feminina',
+  'Corpo & Banho',
+  'Cabelos',
+  'Maquiagem & Beleza',
+  'Linha Infantil & Kids',
+];
+
+function chaveCategoria(categoria) {
+  return normalizar(categoria).replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+export function categoriaLimpa(rotulo) {
+  const plano = chaveCategoria(rotulo);
+  for (const categoria of CATEGORIAS) {
+    if (plano === chaveCategoria(categoria) || plano.includes(chaveCategoria(categoria))) {
+      return categoria;
+    }
+  }
+  return '';
+}
+
 function textoBuscavel(p) {
   return normalizar([p.nome, p.marca, p.categoria, p.tamanho, p.descricao].join(' '));
 }

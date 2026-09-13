@@ -67,6 +67,16 @@ test('preco_de ausente vira null sem invalidar o produto', () => {
   assert.equal(p.precoPor, 110);
 });
 
+test('esgotado e independente de ativo e aceita variacoes de escrita', () => {
+  assert.equal(normalizarProduto({ ...linhaOk, esgotado: 'sim' }).esgotado, true);
+  assert.equal(normalizarProduto({ ...linhaOk, esgotado: 'nao' }).esgotado, false);
+});
+
+test('linha sem coluna esgotado vira false, sem invalidar o produto', () => {
+  const p = normalizarProduto(linhaOk);
+  assert.equal(p.esgotado, false);
+});
+
 test('ativo aceita variacoes de escrita', () => {
   assert.equal(normalizarProduto({ ...linhaOk, ativo: 'SIM' }).ativo, true);
   assert.equal(normalizarProduto({ ...linhaOk, ativo: 'nao' }).ativo, false);

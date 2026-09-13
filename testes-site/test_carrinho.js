@@ -85,6 +85,21 @@ test('a mensagem lista itens e total', () => {
   assert.match(m, /Total: R\$ 295,00/);
 });
 
+test('a mensagem inclui a marca entre parenteses para desambiguar produtos', () => {
+  const c = new Carrinho(memoria());
+  c.adicionar({ id: 'pos-quimica-natura', nome: 'Pós Química', tamanho: '250 ml', marca: 'Natura', precoPor: 40 });
+  c.adicionar({ id: 'pos-quimica-eudora', nome: 'Pós Química', tamanho: '250 ml', marca: 'Eudora', precoPor: 38 });
+  const m = c.montarMensagem();
+  assert.match(m, /Pós Química \(Natura\) 250 ml/);
+  assert.match(m, /Pós Química \(Eudora\) 250 ml/);
+});
+
+test('produto sem marca nao mostra parenteses vazio na mensagem', () => {
+  const c = new Carrinho(memoria());
+  c.adicionar(kaiak);
+  assert.doesNotMatch(c.montarMensagem(), /\(\)/);
+});
+
 test('o link aponta para o numero configurado e vem codificado', () => {
   const c = new Carrinho(memoria());
   c.adicionar(kaiak);

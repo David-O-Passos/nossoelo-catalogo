@@ -39,16 +39,14 @@ Priorize nesta ordem:
 1. Crie uma planilha nova no Google Sheets.
 2. **Arquivo → Configurações → Local: Brasil.** Isso faz o separador decimal ser vírgula.
 3. Importe `ferramentas/saida/produtos.csv`.
-4. Copie a coluna inteira `preco_por` (coluna **J**) e cole em uma coluna nova, a **M**, usando **colar somente valores** (Ctrl+Shift+V). Dê a ela o título `preco_original`.
-
-   Essa coluna M guarda o preço que veio migrado do catálogo antigo, usado nas linhas que não têm o par `preco_de`/`desconto` para calcular a partir dele. Sem ela, a fórmula do passo seguinte ficaria se referenciando — e o Google Sheets recusa isso com "Erro de referência circular".
-5. Agora, na coluna `preco_por` (**J**), a partir da linha 2, coloque a fórmula e arraste para baixo:
+4. Adicione uma coluna `esgotado` (`sim`/`nao`) — ela é opcional (linha sem essa coluna cai em `nao` sozinha), mas já deixe reservada para o item 2 do `GUIA.md`.
+5. `preco_de` e `preco_por` são digitados direto (preço cheio e preço de venda). A coluna `desconto` é quem tem fórmula, calculando a porcentagem entre os dois e arredondando para inteiro — a partir da linha 2, arraste para baixo:
 
    ```
-   =SE(E(H2<>"";I2<>"");ARRED(H2*(1-I2/100);2);M2)
+   =SE(E(H2<>"";J2<>"");ARRED((H2-J2)/H2*100;0);"")
    ```
 
-   `H` é `preco_de`, `I` é `desconto`, `M` é o valor migrado colado no passo anterior. Assim ele mexe só no desconto e o preço final se ajusta, mas cai no valor original para quem não tem desconto cadastrado.
+   `H` é `preco_de`, `J` é `preco_por`. Assim o preço final nunca sai com centavos quebrados (o problema do formato antigo, que calculava `preco_por` a partir do desconto).
 6. **Arquivo → Compartilhar → Publicar na web** → aba `produtos`, formato **CSV** → copie o link.
 7. Compartilhe a planilha com ele como **editor**.
 

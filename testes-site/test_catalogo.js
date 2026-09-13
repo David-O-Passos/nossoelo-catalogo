@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizar, buscar, filtrar, ordenar, agrupar } from '../site/js/catalogo.js';
+import {
+  normalizar, buscar, filtrar, ordenar, agrupar, marcaLimpa, categoriaLimpa,
+} from '../site/js/catalogo.js';
 
 const produtos = [
   { id: '1', nome: 'Kaiak Aventura', marca: 'Natura', categoria: 'Masculino', tamanho: '100 ml', descricao: 'Floral aquoso', precoPor: 110, desconto: 42 },
@@ -60,4 +62,29 @@ test('agrupa por marca e depois categoria', () => {
   const g = agrupar(produtos);
   assert.deepEqual([...g.keys()], ['Natura', 'O Boticário']);
   assert.equal(g.get('Natura').get('Feminino').length, 1);
+});
+
+test('marcaLimpa reconhece as marcas cadastradas mesmo com texto sujo', () => {
+  assert.equal(marcaLimpa('Eudora H Ready 100ml'), 'Eudora');
+  assert.equal(marcaLimpa('Natura VEVE'), 'Natura');
+  assert.equal(marcaLimpa('O Boticário'), 'O Boticário');
+});
+
+test('marcaLimpa engloba Lattafa e variações de "árabe" sob Árabes', () => {
+  assert.equal(marcaLimpa('Lattafa Khamrah'), 'Árabes');
+  assert.equal(marcaLimpa('Perfume Árabe Importado'), 'Árabes');
+});
+
+test('marcaLimpa sem correspondencia devolve vazio', () => {
+  assert.equal(marcaLimpa('Marca Desconhecida'), '');
+});
+
+test('categoriaLimpa reconhece as 7 categorias fixas', () => {
+  assert.equal(categoriaLimpa('Perfumaria Masculina'), 'Perfumaria Masculina');
+  assert.equal(categoriaLimpa('cabelos'), 'Cabelos');
+  assert.equal(categoriaLimpa('KITS & PRESENTES'), 'Kits & Presentes');
+});
+
+test('categoriaLimpa sem correspondencia devolve vazio', () => {
+  assert.equal(categoriaLimpa('Categoria Inventada'), '');
 });

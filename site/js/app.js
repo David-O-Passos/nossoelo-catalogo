@@ -1,12 +1,15 @@
 import { carregarProdutos } from './dados.js';
 import { Carrinho, reais } from './carrinho.js';
-import { buscar, ordenar } from './catalogo.js';
+import {
+  buscar, ordenar, marcaLimpa, CATEGORIAS, categoriaLimpa,
+} from './catalogo.js';
 
 const $ = (s) => document.querySelector(s);
 const carrinho = new Carrinho();
 
 let todos = [];
 let marcaAtiva = '';
+let categoriaAtiva = '';
 
 /** Escapa texto vindo da planilha antes de ir para innerHTML. */
 function escapar(texto) {
@@ -24,28 +27,34 @@ function limparNome(nome) {
 
 function cartao(p) {
   const el = document.createElement('article');
-  el.className = 'produto';
+  el.className = p.esgotado ? 'produto esgotado' : 'produto';
 
   const nome = escapar(limparNome(p.nome));
+  const marca = marcaLimpa(p.marca);
   const src = p.imagem ? `img/${encodeURIComponent(p.imagem)}` : 'img/placeholder.webp';
   const selo = p.desconto ? `<span class="selo">-${p.desconto}%</span>` : '';
+  const seloEsgotado = p.esgotado ? '<span class="selo-esgotado">ESGOTADO</span>' : '';
   const de = p.precoDe && p.precoDe > p.precoPor
     ? `<div class="preco-de">R$ ${reais(p.precoDe)}</div>` : '';
 
   el.innerHTML = `
-    <div class="moldura">
+    <div class="moldura" role="button" tabindex="0" aria-label="Ver detalhes de ${nome}">
       ${selo}
+      ${seloEsgotado}
       <img src="${src}" alt="${nome}" loading="lazy" decoding="async">
     </div>
     <div class="corpo">
       <h3>${nome}</h3>
+      ${marca ? `<p class="marca-card">${escapar(marca)}</p>` : ''}
       ${p.tamanho ? `<p class="tamanho">${escapar(p.tamanho)}</p>` : ''}
       <div class="precos">
         <div>
           ${de}
           <div class="preco-por">R$ ${reais(p.precoPor)}</div>
         </div>
-        <button class="somar" type="button" aria-label="Adicionar ${nome} ao pedido">+</button>
+        <button class="somar" type="button"
+                aria-label="${p.esgotado ? 'Produto esgotado' : `Adicionar ${nome} ao pedido`}"
+                ${p.esgotado ? 'disabled' : ''}>+</button>
       </div>
     </div>`;
 
@@ -53,11 +62,25 @@ function cartao(p) {
     e.target.src = 'img/placeholder.webp';
   });
 
+  const abrirEsteDetalhe = () => abrirDetalhe(p);
+  const moldura = el.querySelector('.moldura');
+  moldura.addEventListener('click', abrirEsteDetalhe);
+  moldura.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirEsteDetalhe(); }
+  });
+  const titulo = el.querySelector('h3');
+  titulo.addEventListener('click', abrirEsteDetalhe);
+  titulo.style.cursor = 'pointer';
+
   const botao = el.querySelector('.somar');
-  botao.addEventListener('click', () => {
+  botao.addEventListener('click', (e) => {
+    e.stopPropagation();
     // Guarda o nome ja limpo: ele vai literal para a mensagem do WhatsApp,
     // onde um hifen solto no fim ("Kaiak -") ficaria visivel para o cliente.
-    carrinho.adicionar({ ...p, nome: limparNome(p.nome) });
+    // A marca tambem vai limpa: e ela que desambigua produtos com o mesmo
+    // nome vendidos em mais de uma marca (ex.: "Pós Química" na Natura e na
+    // Eudora).
+    carrinho.adicionar({ ...p, nome: limparNome(p.nome), marca });
     atualizarBotaoCarrinho();
     // Confirmacao curta no proprio botao: no celular o carrinho fica longe
     // do polegar e o cliente precisa saber que o toque valeu.
@@ -72,36 +95,44 @@ function cartao(p) {
   return el;
 }
 
-// O rotulo de marca vem de cabecalhos do Word e chega sujo ("Eudora H Ready
-// 100ml", "Natura VEVE"). Reduzimos ao nome da marca que aparece dentro dele.
-const MARCAS = ['Natura', 'O Boticário', 'Avon', 'Eudora', 'Lattafa'];
+/** Preenche e abre o dialog de detalhe do produto (clicar para ver a descrição). */
+function abrirDetalhe(p) {
+  const nome = limparNome(p.nome);
+  const marca = marcaLimpa(p.marca);
+  const src = p.imagem ? `img/${encodeURIComponent(p.imagem)}` : 'img/placeholder.webp';
+  const de = p.precoDe && p.precoDe > p.precoPor
+    ? `<div class="preco-de">R$ ${reais(p.precoDe)}</div>` : '';
 
-function marcaLimpa(rotulo) {
-  const plano = String(rotulo || '').normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  for (const marca of MARCAS) {
-    const chave = marca.replace(/^o /i, '').normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    if (plano.includes(chave)) return marca;
-  }
-  return '';
+  $('#detalhe-imagem').src = src;
+  $('#detalhe-imagem').alt = escapar(nome);
+  $('#detalhe-nome').textContent = nome;
+  $('#detalhe-marca').textContent = [marca, p.tamanho].filter(Boolean).join(' · ');
+  $('#detalhe-precos').innerHTML = de + '<div class="preco-por">R$ ' + reais(p.precoPor) + '</div>';
+  $('#detalhe-descricao').textContent = p.descricao || 'Sem descrição cadastrada.';
+  $('#detalhe-esgotado').hidden = !p.esgotado;
+
+  const botao = $('#detalhe-somar');
+  botao.disabled = !!p.esgotado;
+  botao.onclick = () => {
+    carrinho.adicionar({ ...p, nome, marca });
+    atualizarBotaoCarrinho();
+    $('#detalhe-produto').close();
+  };
+
+  $('#detalhe-produto').showModal();
 }
 
-function montarChips() {
-  const marcas = [...new Set(todos.map((p) => marcaLimpa(p.marca)).filter(Boolean))]
-    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
-
-  const nav = $('#chips');
+/** Monta uma linha de chips (marca ou categoria); aoEscolher recebe o valor clicado. */
+function montarChipsGenerico(nav, valores, ativoAtual, aoEscolher) {
   nav.replaceChildren();
-
-  for (const [valor, rotulo] of [['', 'Tudo'], ...marcas.map((m) => [m, m])]) {
+  for (const [valor, rotulo] of [['', 'Tudo'], ...valores.map((v) => [v, v])]) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'chip';
     b.textContent = rotulo;
-    b.setAttribute('aria-pressed', String(valor === marcaAtiva));
+    b.setAttribute('aria-pressed', String(valor === ativoAtual));
     b.addEventListener('click', () => {
-      marcaAtiva = valor;
+      aoEscolher(valor);
       for (const outro of nav.children) outro.setAttribute('aria-pressed', 'false');
       b.setAttribute('aria-pressed', 'true');
       render();
@@ -111,10 +142,21 @@ function montarChips() {
   }
 }
 
+
+function montarChips() {
+  const marcas = [...new Set(todos.map((p) => marcaLimpa(p.marca)).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  montarChipsGenerico($('#chips'), marcas, marcaAtiva, (v) => { marcaAtiva = v; });
+
+  const categorias = [...new Set(todos.map((p) => categoriaLimpa(p.categoria)).filter(Boolean))]
+    .sort((a, b) => CATEGORIAS.indexOf(a) - CATEGORIAS.indexOf(b));
+  montarChipsGenerico($('#chips-categoria'), categorias, categoriaAtiva, (v) => { categoriaAtiva = v; });
+}
+
 function render() {
-  const visiveis = marcaAtiva
-    ? todos.filter((p) => marcaLimpa(p.marca) === marcaAtiva)
-    : todos;
+  let visiveis = todos;
+  if (marcaAtiva) visiveis = visiveis.filter((p) => marcaLimpa(p.marca) === marcaAtiva);
+  if (categoriaAtiva) visiveis = visiveis.filter((p) => categoriaLimpa(p.categoria) === categoriaAtiva);
 
   const lista = ordenar(buscar(visiveis, $('#busca').value), $('#ordem').value)
     // Produto com foto vem primeiro. Array.sort e estavel, entao a ordem
@@ -145,7 +187,9 @@ function renderCarrinho() {
 
   for (const item of carrinho.itens()) {
     const li = document.createElement('li');
-    const nome = escapar([limparNome(item.nome), item.tamanho].filter(Boolean).join(' '));
+    const nome = escapar(
+      [limparNome(item.nome), item.marca && `(${item.marca})`, item.tamanho].filter(Boolean).join(' '),
+    );
     li.innerHTML = `
       <span class="nome">${nome}</span>
       <input type="number" min="0" inputmode="numeric" value="${item.quantidade}"
@@ -203,6 +247,7 @@ async function iniciar() {
     $('#painel-carrinho').showModal();
   });
   $('#fechar-painel').addEventListener('click', () => $('#painel-carrinho').close());
+  $('#fechar-detalhe').addEventListener('click', () => $('#detalhe-produto').close());
 
   render();
   atualizarBotaoCarrinho();

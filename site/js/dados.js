@@ -51,6 +51,10 @@ export function normalizarProduto(linha) {
     precoDe: numero(linha.preco_de),
     imagem: (linha.imagem || '').trim(),
     destaque: verdadeiro(linha.destaque),
+    // Coluna nova e independente de "ativo": o produto continua na vitrine,
+    // so perde o botao de comprar. Planilha sem essa coluna ainda cai aqui e
+    // vira false, entao publicar isto nao exige mudar a planilha primeiro.
+    esgotado: verdadeiro(linha.esgotado),
   };
 }
 

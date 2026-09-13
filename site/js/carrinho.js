@@ -34,7 +34,8 @@ export class Carrinho {
     if (existente) existente.quantidade += quantidade;
     else this._itens.push({
       id: produto.id, nome: produto.nome,
-      tamanho: produto.tamanho || '', precoPor: produto.precoPor,
+      tamanho: produto.tamanho || '', marca: produto.marca || '',
+      precoPor: produto.precoPor,
       quantidade,
     });
     this._gravar();
@@ -88,7 +89,9 @@ export class Carrinho {
   montarMensagem() {
     if (!this._itens.length) return 'Olá! Gostaria de fazer um pedido.';
     const linhas = this._itens.map((i) => {
-      const nome = [i.nome, i.tamanho].filter(Boolean).join(' ');
+      // A marca entra no nome, nao depois do tamanho: sem ela, "Pós Química"
+      // chega ambigua para quem vende a mesma linha em mais de uma marca.
+      const nome = [i.nome, i.marca && `(${i.marca})`, i.tamanho].filter(Boolean).join(' ');
       return `${i.quantidade}x ${nome} — R$ ${reais(i.precoPor * i.quantidade)}`;
     });
     return `Olá! Quero fazer um pedido:\n\n${linhas.join('\n')}\n\nTotal: R$ ${reais(this.total())}`;

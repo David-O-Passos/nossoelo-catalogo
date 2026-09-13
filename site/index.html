@@ -28,6 +28,7 @@
   </div>
 
   <nav id="chips" class="chips" aria-label="Filtrar por marca"></nav>
+  <nav id="chips-categoria" class="chips chips-categoria" aria-label="Filtrar por categoria"></nav>
 </header>
 
 <div id="avisos" class="avisos" hidden></div>
@@ -68,6 +69,19 @@
     Enviar pedido pelo WhatsApp
   </a>
   <button id="fechar-painel" class="botao-secundario">Continuar escolhendo</button>
+</dialog>
+
+<dialog id="detalhe-produto" aria-labelledby="detalhe-nome">
+  <div class="detalhe-imagem-caixa">
+    <img id="detalhe-imagem" src="" alt="">
+  </div>
+  <p id="detalhe-esgotado" class="detalhe-esgotado" hidden>ESGOTADO</p>
+  <h2 id="detalhe-nome"></h2>
+  <p id="detalhe-marca" class="detalhe-marca"></p>
+  <div id="detalhe-precos" class="precos"></div>
+  <p id="detalhe-descricao" class="detalhe-descricao"></p>
+  <button id="detalhe-somar" type="button" class="botao-enviar">Adicionar ao pedido</button>
+  <button id="fechar-detalhe" class="botao-secundario">Fechar</button>
 </dialog>
 
 <script type="module" src="js/app.js"></script>

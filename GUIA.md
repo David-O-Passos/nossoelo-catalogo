@@ -11,26 +11,32 @@ Guarde esta página. É tudo que você precisa saber.
 Esta é a tarefa do mês. Leva uns 20 minutos.
 
 1. Abra a planilha.
-2. Mexa só na coluna **desconto** — escreva o número sem o sinal de `%`. Se o desconto do Kaiak passou de 42 para 50, apague o 42 e escreva 50.
-3. Pronto. A coluna **preço final** se ajusta sozinha, ela tem uma fórmula.
+2. Mexa nas colunas **preço de** (preço cheio, de tabela) e **preço por** (o preço que o cliente vai pagar). Se o Kaiak vai custar R$ 89,90 em vez de R$ 78,20, escreva 89,90 na coluna **preço por**.
+3. Pronto. A coluna **desconto** se ajusta sozinha, ela tem uma fórmula que calcula a porcentagem e arredonda para um número inteiro (sem casas decimais).
 
-> **Dica que economiza tempo:** dá para colar uma coluna inteira de uma vez. Se você já tem os descontos novos em outro lugar, copie a coluna toda e cole em cima da coluna desconto. Não precisa fazer linha por linha.
+> **Dica que economiza tempo:** dá para colar uma coluna inteira de uma vez. Se você já tem os preços novos em outro lugar, copie a coluna toda e cole em cima da coluna preço por. Não precisa fazer linha por linha.
 
-Se o preço de tabela mudou (não só o desconto), altere também a coluna **preço de**.
+> **Por que mudou:** antes você digitava o desconto em % e o preço final saía com centavos quebrados (tipo R$ 45,52). Agora você digita os dois preços redondos que quiser e o % fica por conta da planilha.
 
 ---
 
-## 2. Produto acabou
+## 2. Produto esgotou (mas volta em breve)
+
+Escreva **sim** na coluna **esgotado**.
+
+O produto **continua aparecendo** no site, mas com a foto meio apagada e um aviso "ESGOTADO" em cima. O cliente ainda encontra e pode ver a descrição, só não consegue adicionar ao pedido.
+
+Quando o produto voltar ao estoque, escreva **nao** na coluna **esgotado** de novo (ou apague o texto da célula).
+
+---
+
+## 3. Produto saiu de linha (não vai voltar)
 
 Escreva **nao** na coluna **ativo**.
 
-Ele some do site. Não apague a linha — mês que vem, quando o produto voltar, é só escrever **sim** de novo e ele volta com tudo preenchido.
+Esse é diferente do esgotado: o produto **some do site inteiro**, como se não existisse. Use isso só quando o produto realmente saiu de linha, não para uma falta de estoque passageira (para isso é o passo 2). Não apague a linha — se um dia ele voltar a ser vendido, é só escrever **sim** de novo e ele volta com tudo preenchido.
 
----
-
-## 3. Produto voltou
-
-Escreva **sim** na coluna **ativo**.
+Para reativar, escreva **sim** na coluna **ativo**.
 
 ---
 
@@ -57,18 +63,23 @@ Crie uma linha nova e preencha:
 |---|---|---|
 | **id** | um código só seu, sem espaço e sem acento | `kaiak-oceano-100ml` |
 | **ativo** | `sim` | `sim` |
-| **marca** | a marca | `Natura` |
-| **categoria** | a seção | `Perfumaria Masculina` |
+| **esgotado** | `nao` (só vira `sim` quando faltar estoque) | `nao` |
+| **marca** | uma das marcas da lista abaixo | `Natura` |
+| **categoria** | uma das categorias da lista abaixo | `Perfumaria Masculina` |
 | **nome** | o nome do produto | `Kaiak Oceano` |
 | **tamanho** | o tamanho | `100 ml` |
-| **descricao** | notas, benefícios | `Amadeirado aquoso` |
-| **preco_de** | preço de tabela | `189,90` |
-| **desconto** | o percentual, só o número | `42` |
-| **preco_por** | deixe a fórmula fazer | — |
+| **descricao** | notas, benefícios (aparece quando o cliente clica no produto) | `Amadeirado aquoso` |
+| **preco_de** | preço de tabela (o preço cheio) | `189,90` |
+| **preco_por** | o preço de venda | `110,00` |
+| **desconto** | deixe a fórmula fazer | — |
 | **imagem** | o nome que você anotou | `kaiak-oceano.webp` |
 | **destaque** | `sim` se quiser dar destaque | `nao` |
 
 > **O `id` não pode repetir.** Se dois produtos tiverem o mesmo id, um deles some do site. A página de conferência avisa se isso acontecer.
+
+**Marcas.** Use exatamente um destes nomes na coluna `marca`, para o filtro do site reconhecer: `Natura`, `Boticário`, `Eudora`, `Avon`, `Árabes` (inclui Lattafa e outras marcas árabes), `Ciclo`.
+
+**Categorias.** Use exatamente uma destas na coluna `categoria`: `Kits & Presentes`, `Perfumaria Masculina`, `Perfumaria Feminina`, `Corpo & Banho`, `Cabelos`, `Maquiagem & Beleza`, `Linha Infantil & Kids`.
 
 ---
 
@@ -117,10 +128,12 @@ Ele abre o link, busca o que quer, vai adicionando no pedido e clica no botão v
 ```
 Olá! Quero fazer um pedido:
 
-2x Kaiak Aventura 100 ml — R$ 220,00
-1x Humor Próprio 75 ml — R$ 75,00
+2x Kaiak Aventura (Natura) 100 ml — R$ 220,00
+1x Humor Próprio (Natura) 75 ml — R$ 75,00
 
 Total: R$ 295,00
 ```
+
+A marca vem entre parênteses justamente para você não ter dúvida quando dois produtos de marcas diferentes têm nome parecido (ex.: "Pós Química" existe na Natura e na Eudora).
 
 Você recebe tudo organizado, numa mensagem só, com o total já somado.
