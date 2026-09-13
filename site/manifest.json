@@ -3,9 +3,12 @@
   "short_name": "NOSSO.ELO",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#faf7f5",
-  "theme_color": "#8c5a3c",
+  "background_color": "#eceae6",
+  "theme_color": "#6d2e46",
   "icons": [
-    { "src": "icone.svg", "sizes": "any", "type": "image/svg+xml" }
+    { "src": "icone.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "icone-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icone-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

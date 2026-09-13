@@ -46,14 +46,21 @@ São duas partes: mandar a foto, e criar a linha.
 
 ### Primeiro, a foto
 
-1. Abra a página de enviar foto (o link está junto com a senha que o David te passou).
-2. Digite a senha.
-3. Escolha a foto do produto.
-4. Dê um nome curto e sem espaço, tipo `kaiak-oceano`.
-5. Clique em enviar.
-6. A página vai mostrar o nome do arquivo, algo como `kaiak-oceano.webp`. **Anote esse nome.**
+1. Abra a página de enviar foto: **nossoelo-catalogo.pages.dev/enviar-foto.html**
+2. Digite a senha (o celular pode salvar ela, assim você não digita de novo da próxima vez).
+3. Toque na área tracejada e escolha a foto do produto. Uma prévia da foto aparece na tela.
+4. O nome do arquivo já vem sugerido a partir do nome da foto. Ajuste para algo curto e sem espaço,
+   tipo `kaiak-oceano`.
+5. Toque em **"Enviar foto"**.
+6. Toque em **"Copiar nome"** e cole esse nome na coluna **imagem** da planilha.
 
-A foto entra no ar em cerca de 1 minuto.
+> Fotos enviadas de iPhone às vezes ficam com final `.jpg` em vez de `.webp` — isso é normal, só
+> cole o nome exatamente como aparece na tela, sem mudar nada.
+
+> Se você já tinha enviado uma foto com esse mesmo nome antes, ela é substituída pela nova.
+
+A foto entra no ar em cerca de 1 minuto. Quer mandar mais de uma foto seguida? É só tocar em
+**"Enviar outra foto"** — a senha continua preenchida, não precisa digitar de novo.
 
 ### Depois, a linha na planilha
 
@@ -64,7 +71,7 @@ Crie uma linha nova e preencha:
 | **id** | um código só seu, sem espaço e sem acento | `kaiak-oceano-100ml` |
 | **ativo** | `sim` | `sim` |
 | **esgotado** | `nao` (só vira `sim` quando faltar estoque) | `nao` |
-| **marca** | uma das marcas da lista abaixo | `Natura` |
+| **marca** | escolha no menu suspenso | `Natura` |
 | **categoria** | clique na célula e escolha no menu suspenso | `Perfumaria Masculina` |
 | **nome** | o nome do produto | `Kaiak Oceano` |
 | **tamanho** | o tamanho | `100 ml` |
@@ -77,7 +84,16 @@ Crie uma linha nova e preencha:
 
 > **O `id` não pode repetir.** Se dois produtos tiverem o mesmo id, um deles some do site. A página de conferência avisa se isso acontecer.
 
-**Marcas.** Use exatamente um destes nomes na coluna `marca`, para o filtro do site reconhecer: `Natura`, `Boticário`, `Eudora`, `Avon`, `Árabes` (inclui Lattafa e outras marcas árabes), `Ciclo`.
+**Marcas.** A coluna `marca` também tem um menu suspenso — clique na célula e escolha uma opção, não
+precisa digitar. A lista vem da aba **Marcas** da planilha, e funciona igual à de categorias:
+
+- **Marca nova:** vá na aba Marcas e escreva o nome numa linha em branco. Ela aparece na hora no menu
+  suspenso da coluna marca, em qualquer produto — e passa a valer no site sozinha.
+- **Renomear uma marca já usada:** troque o nome na aba Marcas. Os produtos que já usavam o nome
+  antigo **não mudam sozinhos** — ficam marcados com um aviso vermelho de "valor inválido". Para
+  corrigir todos de uma vez: na aba de produtos, selecione a coluna marca, `Ctrl+H` (Localizar e
+  substituir), coloque o nome antigo em "Localizar" e o novo em "Substituir por", restrinja ao
+  intervalo da coluna e clique em "Substituir tudo".
 
 **Categorias.** A coluna `categoria` tem um menu suspenso — clique na célula e escolha uma opção, não precisa digitar. A lista de opções vem da aba **Categorias** da planilha:
 
@@ -86,7 +102,39 @@ Crie uma linha nova e preencha:
 
 ---
 
-## 5. Conferir se ficou tudo certo
+## 5. Cores da planilha
+
+A planilha pinta as linhas e células sozinha, para chamar sua atenção sem você precisar ler tudo:
+
+- **Cinza** — o produto está inativo (coluna ativo = não). Ele some do site.
+- **Rosa** — o produto está esgotado. Ele aparece no site, mas sem poder ser adicionado ao pedido.
+- **Dourado** — o produto está em destaque.
+- **Vermelho numa célula** — falta o preço de venda (preco_por). **O produto não aparece no site**
+  enquanto essa célula estiver vazia.
+- **Amarelo numa célula** — falta foto, descrição ou tamanho. O produto aparece do mesmo jeito, só
+  fica incompleto na página dele.
+
+Nenhuma dessas cores precisa ser mexida por você — elas são só um aviso visual.
+
+---
+
+## 6. Aba Painel
+
+Ao abrir a planilha, a primeira aba é o **Painel**. Ele mostra um resumo rápido, que se atualiza
+sozinho conforme você mexe nos produtos:
+
+- **Produtos no ar** — quantos produtos estão realmente aparecendo no site agora.
+- **Esgotados**, **Em destaque** — quantos produtos estão em cada situação.
+- **Sem foto**, **Sem preço**, **Sem descrição** — quantos produtos ativos ainda estão incompletos
+  (o "sem preço" é o mais importante: esse produto some do site até você preencher).
+- Duas tabelas mostram quantos produtos ativos existem em cada categoria e em cada marca.
+
+É um jeito rápido de ver, sem precisar rolar a planilha toda, se está faltando preencher alguma
+coisa.
+
+---
+
+## 7. Conferir se ficou tudo certo
 
 Antes de divulgar, abra a **página de conferência** e clique em "Conferir agora".
 
@@ -95,23 +143,27 @@ Ela mostra duas listas:
 - **Erros** — precisam ser corrigidos. Um produto com erro não aparece no site.
 - **Avisos** — pode publicar assim mesmo. Geralmente é produto sem foto.
 
-Se aparecer "Não consegui ler a planilha", a planilha saiu do ar ou parou de estar publicada. Veja o item 7.
+Se aparecer "Não consegui ler a planilha", a planilha saiu do ar ou parou de estar publicada. Veja o item 9.
 
 ---
 
-## 6. Errei alguma coisa, e agora?
+## 8. Errei alguma coisa, e agora?
 
 Na planilha: **Arquivo → Histórico de versões → Ver histórico de versões**. Escolha uma versão de antes do erro e restaure. Nada se perde.
 
 ---
 
-## 7. Perguntas que podem aparecer
+## 9. Perguntas que podem aparecer
 
 **Mudei a planilha e o site não mudou.**
 Espere 10 minutos e atualize a página. O site guarda os dados por esse tempo para abrir rápido no 4G do cliente.
 
 **O cliente disse que o preço está errado.**
 Ele provavelmente está com a página antiga aberta. Peça para fechar e abrir de novo.
+
+**O preço riscado não aparece.**
+Preencha a coluna `preco_de` com um valor maior que o `preco_por`. O preço riscado só aparece quando
+há essa diferença.
 
 **Posso apagar uma linha da planilha?**
 Pode, mas prefira escrever `nao` na coluna ativo. Assim você não perde o cadastro.
