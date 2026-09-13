@@ -7,59 +7,273 @@
 <title>Enviar foto — NOSSO.ELO</title>
 <link rel="icon" href="icone.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/estilo.css">
+<link rel="stylesheet" href="css/admin.css">
 </head>
-<body>
-<header class="topo"><h1>Enviar foto de produto</h1></header>
-<main style="padding:16px;max-width:480px">
-  <p>1. Escolha a foto. 2. Dê um nome curto. 3. Envie.<br>
-     Depois copie o nome do arquivo para a coluna <strong>imagem</strong> da planilha.</p>
-  <p><input type="password" id="senha" placeholder="Senha" style="width:100%;padding:12px"></p>
-  <p><input type="text" id="nome" placeholder="nome-do-produto" style="width:100%;padding:12px"></p>
-  <p><input type="file" id="arquivo" accept="image/*"></p>
-  <button id="enviar" class="botao-enviar" style="border:0;cursor:pointer">Enviar</button>
-  <p id="status" style="margin-top:16px"></p>
+<body class="pagina-admin">
+
+<header class="topo-admin">
+  <div class="marca">
+    <h1>Nosso<span>.</span>Elo</h1>
+    <p class="lema">Enviar foto de produto</p>
+  </div>
+</header>
+
+<main class="painel-admin">
+  <ul class="passos">
+    <li><span class="numero">1</span> Escolha a foto</li>
+    <li><span class="numero">2</span> Confira o nome</li>
+    <li><span class="numero">3</span> Envie e copie o nome para a coluna "imagem" da planilha</li>
+  </ul>
+
+  <form id="formulario" autocomplete="on">
+    <input class="sr-only" type="text" id="usuario" name="username" autocomplete="username"
+           value="nossoelo" tabindex="-1" aria-hidden="true">
+
+    <label class="campo">
+      <span class="rotulo">Senha</span>
+      <input type="password" id="senha" name="password" autocomplete="current-password" placeholder="Senha de envio">
+    </label>
+
+    <label class="campo zona-foto" id="zonaFoto" for="arquivo">
+      <svg class="icone-foto" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M4 16.5V18a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        <path d="M12 15V4m0 0-4 4m4-4 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="texto-foto texto-foto-inicial">Toque para escolher a foto<br><strong>ou arraste aqui</strong></span>
+      <span class="texto-foto trocar-dica">Toque para trocar a foto</span>
+      <img class="previa-imagem" id="previaImagem" alt="">
+      <input class="sr-only" type="file" id="arquivo" accept="image/*">
+    </label>
+
+    <label class="campo">
+      <span class="rotulo">Nome do arquivo</span>
+      <input type="text" id="nome" placeholder="kaiak-oceano" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <span class="previa-nome" id="previaNome" hidden>Vai ser salvo como <code id="previaNomeCodigo"></code></span>
+    </label>
+
+    <button id="enviar" class="botao-enviar" type="submit">Enviar foto</button>
+  </form>
+
+  <div id="status" aria-live="polite"></div>
 </main>
+
 <script type="module">
 const $ = (s) => document.querySelector(s);
 
-/** Reduz para 800px no maior lado e converte para WebP dentro do navegador. */
-async function paraWebp(file) {
+const zonaFoto = $('#zonaFoto');
+const campoArquivo = $('#arquivo');
+const previaImagem = $('#previaImagem');
+const campoNome = $('#nome');
+const previaNome = $('#previaNome');
+const previaNomeCodigo = $('#previaNomeCodigo');
+const botaoEnviar = $('#enviar');
+const status = $('#status');
+const formulario = $('#formulario');
+
+let arquivoAtual = null;
+let urlPrevia = null;
+let nomeEditadoManualmente = false;
+
+/** Mesma regra de nome usada no servidor: minusculas, sem acento, so [a-z0-9-]. */
+function slugificar(texto) {
+  const base = String(texto || '').trim().toLowerCase()
+    .normalize('NFD').replace(/\p{Diacritic}/gu, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return base.slice(0, 60).replace(/-+$/g, '');
+}
+
+function nomeSemExtensao(nomeArquivo) {
+  const i = nomeArquivo.lastIndexOf('.');
+  return i > 0 ? nomeArquivo.slice(0, i) : nomeArquivo;
+}
+
+function atualizarPreviaNome() {
+  const slug = slugificar(campoNome.value);
+  if (slug) {
+    previaNomeCodigo.textContent = slug + '.webp';
+    previaNome.hidden = false;
+  } else {
+    previaNome.hidden = true;
+  }
+}
+
+function selecionarArquivo(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  arquivoAtual = file;
+  if (urlPrevia) URL.revokeObjectURL(urlPrevia);
+  urlPrevia = URL.createObjectURL(file);
+  previaImagem.src = urlPrevia;
+  zonaFoto.classList.add('tem-foto');
+  if (!campoNome.value.trim() && !nomeEditadoManualmente) {
+    campoNome.value = nomeSemExtensao(file.name);
+    atualizarPreviaNome();
+  }
+}
+
+campoArquivo.addEventListener('change', () => {
+  selecionarArquivo(campoArquivo.files[0]);
+});
+
+campoNome.addEventListener('input', () => {
+  nomeEditadoManualmente = campoNome.value.trim().length > 0;
+  atualizarPreviaNome();
+});
+
+zonaFoto.addEventListener('dragover', (ev) => {
+  ev.preventDefault();
+  zonaFoto.classList.add('arrastando');
+});
+zonaFoto.addEventListener('dragleave', () => {
+  zonaFoto.classList.remove('arrastando');
+});
+zonaFoto.addEventListener('drop', (ev) => {
+  ev.preventDefault();
+  zonaFoto.classList.remove('arrastando');
+  const file = ev.dataTransfer.files && ev.dataTransfer.files[0];
+  if (file) selecionarArquivo(file);
+});
+
+function bufferParaBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const tamanhoBloco = 0x8000;
+  let binario = '';
+  for (let i = 0; i < bytes.length; i += tamanhoBloco) {
+    binario += String.fromCharCode(...bytes.subarray(i, i + tamanhoBloco));
+  }
+  return btoa(binario);
+}
+
+/** Reduz para 800px no maior lado e converte para WebP. Em navegadores que
+    nao sabem gerar WebP (Safari/iPhone mais antigo), cai para JPEG. */
+async function converterImagem(file) {
   const bitmap = await createImageBitmap(file);
   const escala = Math.min(1, 800 / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(bitmap.width * escala);
   canvas.height = Math.round(bitmap.height * escala);
   canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  const blob = await new Promise((r) => canvas.toBlob(r, 'image/webp', 0.82));
+
+  let blob = await new Promise((r) => canvas.toBlob(r, 'image/webp', 0.82));
+  let extensao = 'webp';
+  if (!blob || blob.type !== 'image/webp') {
+    blob = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', 0.85));
+    extensao = 'jpg';
+  }
   const buffer = await blob.arrayBuffer();
-  let binario = '';
-  for (const b of new Uint8Array(buffer)) binario += String.fromCharCode(b);
-  return btoa(binario);
+  return { conteudoBase64: bufferParaBase64(buffer), extensao };
 }
 
-$('#enviar').addEventListener('click', async () => {
-  const file = $('#arquivo').files[0];
-  const nomeBase = $('#nome').value.trim().toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+function mostrarSpinner(ligado, texto) {
+  botaoEnviar.disabled = ligado;
+  botaoEnviar.innerHTML = ligado
+    ? '<span class="spinner" aria-hidden="true"></span>' + texto
+    : texto;
+}
 
-  if (!file || !nomeBase) {
-    $('#status').textContent = 'Escolha a foto e digite um nome.';
+function cartaoErro(mensagem) {
+  const div = document.createElement('div');
+  div.className = 'resultado erro';
+  const p = document.createElement('p');
+  p.textContent = mensagem;
+  div.appendChild(p);
+  status.replaceChildren(div);
+}
+
+function cartaoSucesso(nomeArquivo, substituida) {
+  const div = document.createElement('div');
+  div.className = 'resultado ok';
+
+  const titulo = document.createElement('h3');
+  titulo.textContent = 'Foto enviada!';
+  div.appendChild(titulo);
+
+  const nomeEl = document.createElement('span');
+  nomeEl.className = 'nome-arquivo';
+  nomeEl.textContent = nomeArquivo;
+  div.appendChild(nomeEl);
+
+  const botaoCopiar = document.createElement('button');
+  botaoCopiar.type = 'button';
+  botaoCopiar.className = 'botao-secundario';
+  botaoCopiar.textContent = 'Copiar nome';
+  botaoCopiar.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(nomeArquivo);
+    } catch {
+      const range = document.createRange();
+      range.selectNodeContents(nomeEl);
+      const selecao = window.getSelection();
+      selecao.removeAllRanges();
+      selecao.addRange(range);
+    }
+    const textoOriginal = botaoCopiar.textContent;
+    botaoCopiar.textContent = 'Copiado ✓';
+    setTimeout(() => { botaoCopiar.textContent = textoOriginal; }, 1500);
+  });
+  div.appendChild(botaoCopiar);
+
+  const explicacao = document.createElement('p');
+  explicacao.textContent = 'Cole esse nome na coluna imagem da planilha. A foto aparece no site em cerca de 1 minuto.';
+  div.appendChild(explicacao);
+
+  if (substituida) {
+    const avisoSub = document.createElement('p');
+    avisoSub.textContent = 'Já existia uma foto com esse nome — ela foi substituída.';
+    div.appendChild(avisoSub);
+  }
+
+  const botaoOutra = document.createElement('button');
+  botaoOutra.type = 'button';
+  botaoOutra.className = 'botao-secundario';
+  botaoOutra.textContent = 'Enviar outra foto';
+  botaoOutra.addEventListener('click', () => {
+    arquivoAtual = null;
+    if (urlPrevia) { URL.revokeObjectURL(urlPrevia); urlPrevia = null; }
+    previaImagem.removeAttribute('src');
+    zonaFoto.classList.remove('tem-foto');
+    campoArquivo.value = '';
+    campoNome.value = '';
+    nomeEditadoManualmente = false;
+    atualizarPreviaNome();
+    status.replaceChildren();
+  });
+  div.appendChild(botaoOutra);
+
+  status.replaceChildren(div);
+}
+
+formulario.addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  status.replaceChildren();
+
+  const senha = $('#senha').value;
+  const nomeBase = slugificar(campoNome.value);
+
+  if (!arquivoAtual) {
+    cartaoErro('Escolha uma foto antes de enviar.');
+    return;
+  }
+  if (!nomeBase) {
+    cartaoErro('Digite um nome para o arquivo.');
+    return;
+  }
+  if (!senha) {
+    cartaoErro('Digite a senha de envio.');
     return;
   }
 
-  $('#status').textContent = 'Enviando...';
+  mostrarSpinner(true, 'Enviando…');
 
-  let conteudoBase64;
+  let conteudoBase64, extensao;
   try {
-    conteudoBase64 = await paraWebp(file);
+    ({ conteudoBase64, extensao } = await converterImagem(arquivoAtual));
   } catch {
     // createImageBitmap ou canvas.toBlob falharam: o arquivo escolhido nao
     // e uma imagem que o navegador consegue abrir. Isso nao tem nada a ver
     // com internet, entao nao pode cair na mensagem generica de rede.
-    $('#status').textContent =
-      'Não consegui ler esse arquivo como imagem. Tente outra foto '
-      + '(JPG ou PNG costuma funcionar).';
+    cartaoErro('Não consegui ler esse arquivo como imagem. Tente outra foto (JPG ou PNG costuma funcionar).');
+    mostrarSpinner(false, 'Enviar foto');
     return;
   }
 
@@ -68,19 +282,21 @@ $('#enviar').addEventListener('click', async () => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        senha: $('#senha').value,
-        nome: nomeBase + '.webp',
+        senha,
+        nome: nomeBase + '.' + extensao,
         conteudoBase64,
       }),
     });
     const r = await resposta.json();
-    $('#status').textContent = r.ok
-      ? `Pronto! Escreva "${r.arquivo}" na coluna imagem da planilha. A foto aparece no site em cerca de 1 minuto.`
-      : 'Erro: ' + r.erro;
+    if (r.ok) {
+      cartaoSucesso(r.arquivo, !!r.substituida);
+    } else {
+      cartaoErro(r.erro || 'Não consegui enviar a foto.');
+    }
   } catch {
-    $('#status').textContent =
-      'Não consegui enviar a foto. Confira sua internet e tente de novo. '
-      + 'Se continuar, avise o David.';
+    cartaoErro('Não consegui enviar a foto. Confira sua internet e tente de novo. Se continuar, avise o David.');
+  } finally {
+    mostrarSpinner(false, 'Enviar foto');
   }
 });
 </script>

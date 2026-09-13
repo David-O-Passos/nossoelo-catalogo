@@ -1,0 +1,295 @@
+/* NOSSO.ELO — paginas administrativas (enviar foto / conferir planilha).
+   Reusa os tokens e classes de estilo.css; nao depende de .topo, que outro
+   agente pode mudar (deixa de ser sticky) na reforma do cabecalho da loja. */
+
+body.pagina-admin {
+  padding-bottom: 32px;
+}
+
+.topo-admin {
+  padding: 16px 16px 14px;
+  border-bottom: 1px solid var(--linha);
+  background: var(--fundo);
+}
+
+.topo-admin .marca {
+  max-width: 480px;
+  margin: 0 auto;
+  justify-content: center;
+}
+
+.painel-admin {
+  box-sizing: border-box;
+  width: calc(100% - 32px);
+  max-width: 480px;
+  margin: 20px auto;
+  padding: 20px;
+  background: var(--carta);
+  border-radius: var(--raio);
+  box-shadow: 0 2px 14px rgba(25, 21, 18, .08);
+}
+
+.painel-admin.largo { max-width: 760px; }
+
+@media (min-width: 600px) {
+  .painel-admin { padding: 24px; }
+}
+
+.painel-admin > p:first-child { margin-top: 0; }
+
+/* ---------- Passos ---------- */
+
+.passos {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.passos li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--tinta);
+}
+
+.passos .numero {
+  flex: 0 0 auto;
+  width: 22px; height: 22px;
+  display: grid;
+  place-items: center;
+  font: 700 12px/1 var(--sans);
+  color: #fff;
+  background: var(--marca);
+  border-radius: 50%;
+  margin-top: 1px;
+}
+
+/* ---------- Formulario ---------- */
+
+.campo { display: block; margin: 0 0 16px; }
+
+.campo .rotulo {
+  display: block;
+  margin-bottom: 6px;
+  font: 600 14px var(--sans);
+  color: var(--tinta);
+}
+
+.campo input[type="text"],
+.campo input[type="password"] {
+  width: 100%;
+  padding: 12px;
+  font: 16px var(--sans);
+  color: var(--tinta);
+  background: var(--carta);
+  border: 1px solid var(--linha);
+  border-radius: 10px;
+}
+
+.campo input:focus-visible {
+  outline: 2px solid var(--marca);
+  outline-offset: 1px;
+}
+
+.previa-nome {
+  display: block;
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--suave);
+}
+
+.previa-nome code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--tinta);
+}
+
+/* ---------- Zona de foto ---------- */
+
+.zona-foto {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 180px;
+  padding: 20px;
+  text-align: center;
+  color: var(--suave);
+  background: var(--fundo);
+  border: 2px dashed var(--linha);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease;
+}
+
+.zona-foto:hover { border-color: var(--marca-f); }
+
+.zona-foto.arrastando {
+  border-color: var(--marca);
+  background: #f4ebee;
+}
+
+.zona-foto .icone-foto {
+  width: 36px; height: 36px;
+  color: var(--suave);
+}
+
+.zona-foto .texto-foto {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.zona-foto .texto-foto strong { color: var(--marca); font-weight: 600; }
+
+.zona-foto .previa-imagem {
+  display: none;
+  max-width: 100%;
+  max-height: 180px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.zona-foto.tem-foto .previa-imagem { display: block; }
+.zona-foto.tem-foto .icone-foto { display: none; }
+
+.zona-foto .trocar-dica {
+  display: none;
+  font-size: 12.5px;
+  color: var(--suave);
+}
+
+.zona-foto.tem-foto .trocar-dica { display: block; }
+.zona-foto.tem-foto .texto-foto-inicial { display: none; }
+
+/* ---------- Spinner ---------- */
+
+.spinner {
+  display: inline-block;
+  width: 16px; height: 16px;
+  vertical-align: -3px;
+  margin-right: 8px;
+  border: 2px solid rgba(255, 255, 255, .5);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: girar .7s linear infinite;
+}
+
+.botao-enviar:disabled .spinner {
+  border-color: rgba(107, 101, 94, .35);
+  border-top-color: var(--suave);
+}
+
+@keyframes girar { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation: none; }
+}
+
+/* ---------- Resultado ---------- */
+
+.resultado {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.resultado.ok {
+  color: #0f5132;
+  background: #e8f6ee;
+  border: 1px solid var(--zap);
+}
+
+.resultado.erro {
+  color: #7a1f1f;
+  background: #fbe9e9;
+  border: 1px solid #c94b4b;
+}
+
+.resultado p { margin: 0 0 10px; }
+.resultado p:last-child { margin-bottom: 0; }
+
+.resultado h3 { margin: 0 0 8px; font: 600 16px var(--sans); }
+
+.nome-arquivo {
+  display: inline-block;
+  margin: 4px 0 10px;
+  padding: 8px 10px;
+  font: 14px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--tinta);
+  background: #fff;
+  border: 1px solid var(--linha);
+  border-radius: 8px;
+  user-select: all;
+  word-break: break-all;
+}
+
+/* ---------- Resumo (validar) ---------- */
+
+.resumo-blocos {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 0 0 20px;
+}
+
+@media (min-width: 600px) {
+  .resumo-blocos { grid-template-columns: repeat(4, 1fr); }
+}
+
+.bloco-resumo {
+  padding: 14px 10px;
+  text-align: center;
+  background: var(--fundo);
+  border-radius: 10px;
+}
+
+.bloco-resumo .numero {
+  display: block;
+  font: 600 24px var(--sans);
+  font-variant-numeric: tabular-nums;
+  color: var(--tinta);
+}
+
+.bloco-resumo .rotulo {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--suave);
+}
+
+.lista-erros,
+.lista-avisos {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lista-erros li,
+.lista-avisos li {
+  padding: 10px 12px;
+  font-size: 13.5px;
+  line-height: 1.4;
+  background: var(--fundo);
+  border-radius: 0 8px 8px 0;
+}
+
+.lista-erros li { border-left: 3px solid #c94b4b; }
+.lista-avisos li { border-left: 3px solid var(--destaque); }
+
+.texto-vazio { font-size: 14px; color: var(--suave); }
+
+.secao-admin h2 {
+  margin: 0 0 10px;
+  font: 400 18px var(--serifa);
+  color: var(--tinta);
+}

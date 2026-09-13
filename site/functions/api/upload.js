@@ -10,15 +10,22 @@ export async function onRequestPost({ request, env }) {
     return responder(400, { ok: false, erro: 'Envio inválido.' });
   }
 
+  if (!dados || typeof dados !== 'object') {
+    return responder(400, { ok: false, erro: 'Pedido inválido.' });
+  }
+
   const { senha, nome, conteudoBase64 } = dados;
 
-  if (!env.SENHA_UPLOAD || senha !== env.SENHA_UPLOAD) {
+  if (!env.SENHA_UPLOAD) {
+    return responder(500, { ok: false, erro: 'Senha de envio não configurada na Cloudflare.' });
+  }
+  if (senha !== env.SENHA_UPLOAD) {
     return responder(401, { ok: false, erro: 'Senha incorreta.' });
   }
-  if (!nome || !/^[a-z0-9][a-z0-9\-]{0,60}\.webp$/.test(nome)) {
+  if (!nome || !/^[a-z0-9]([a-z0-9-]{0,58}[a-z0-9])?\.(webp|jpg)$/.test(nome)) {
     return responder(400, {
       ok: false,
-      erro: 'Nome inválido. Use apenas letras minúsculas, números e hífen, terminando em .webp',
+      erro: 'Nome inválido. Use apenas letras minúsculas, números e hífen, terminando em .webp ou .jpg',
     });
   }
   if (!conteudoBase64 || conteudoBase64.length > 4_000_000) {
@@ -58,5 +65,5 @@ export async function onRequestPost({ request, env }) {
     });
   }
 
-  return responder(200, { ok: true, arquivo: nome });
+  return responder(200, { ok: true, arquivo: nome, substituida: !!sha });
 }

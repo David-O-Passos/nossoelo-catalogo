@@ -7,20 +7,33 @@
 <title>Conferir planilha — NOSSO.ELO</title>
 <link rel="icon" href="icone.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/estilo.css">
+<link rel="stylesheet" href="css/admin.css">
 </head>
-<body>
-<header class="topo"><h1>Conferir planilha</h1></header>
-<main style="padding:16px">
+<body class="pagina-admin">
+
+<header class="topo-admin">
+  <div class="marca">
+    <h1>Nosso<span>.</span>Elo</h1>
+    <p class="lema">Conferir planilha</p>
+  </div>
+</header>
+
+<main class="painel-admin largo">
   <p>Abra esta página depois de atualizar a planilha para ver se ficou tudo certo.</p>
-  <button id="conferir" class="botao-enviar" style="border:0;cursor:pointer">Conferir agora</button>
-  <div id="saida" style="margin-top:20px"></div>
+  <button id="conferir" class="botao-enviar" type="button">Conferir agora</button>
+  <div id="saida" aria-live="polite"></div>
 </main>
+
 <script type="module">
 import { parseCSV } from './js/csv.js';
 import { analisar } from './js/validador.js';
 import { URL_PLANILHA } from './js/config.js';
 
-/** Escapa texto vindo da planilha antes de ir para innerHTML. */
+const $ = (s) => document.querySelector(s);
+const botao = $('#conferir');
+const saida = $('#saida');
+
+/** Escapa texto vindo da planilha antes de virar HTML. */
 function escapar(texto) {
   return String(texto ?? '')
     .replaceAll('&', '&amp;')
@@ -29,9 +42,20 @@ function escapar(texto) {
     .replaceAll('"', '&quot;');
 }
 
-document.querySelector('#conferir').addEventListener('click', async () => {
-  const saida = document.querySelector('#saida');
-  saida.textContent = 'Conferindo...';
+function mostrarSpinner(ligado) {
+  botao.disabled = ligado;
+  botao.innerHTML = ligado
+    ? '<span class="spinner" aria-hidden="true"></span>Conferindo…'
+    : 'Conferir agora';
+}
+
+function bloco(numero, rotulo) {
+  return `<div class="bloco-resumo"><span class="numero">${numero}</span><span class="rotulo">${escapar(rotulo)}</span></div>`;
+}
+
+botao.addEventListener('click', async () => {
+  mostrarSpinner(true);
+  saida.innerHTML = '';
   try {
     const resposta = await fetch(URL_PLANILHA + '&t=' + Date.now());
     if (!resposta.ok) {
@@ -69,19 +93,46 @@ document.querySelector('#conferir').addEventListener('click', async () => {
     }
 
     const r = analisar(linhas, [...new Set([...existentes, ...doManifesto])]);
-    const erros = r.erros.map((e) => `<li>Linha ${e.linha}: ${escapar(e.motivo)}</li>`).join('');
-    const avisos = r.avisos.slice(0, 50).map((a) => `<li>${escapar(a)}</li>`).join('');
+
+    const listaErros = r.erros
+      .map((e) => `<li>Linha ${e.linha} — ${escapar(e.motivo)}</li>`)
+      .join('');
+
+    const mostrarAvisos = r.avisos.slice(0, 50);
+    const restoAvisos = r.avisos.length - mostrarAvisos.length;
+    const listaAvisos = mostrarAvisos.map((a) => `<li>${escapar(a)}</li>`).join('')
+      + (restoAvisos > 0 ? `<li>e mais ${restoAvisos} avisos</li>` : '');
+
     saida.innerHTML = `
-      <p><strong>${r.resumo.total}</strong> linhas ·
-         <strong>${r.resumo.ativos}</strong> à venda ·
-         <strong>${r.resumo.inativos}</strong> fora do ar ·
-         <strong>${r.resumo.semImagem}</strong> sem foto</p>
-      <h2>Erros (${r.erros.length}) — precisam ser corrigidos</h2>
-      <ul>${erros || '<li>Nenhum. Está tudo certo.</li>'}</ul>
-      <h2>Avisos (${r.avisos.length}) — dá pra publicar assim</h2>
-      <ul>${avisos || '<li>Nenhum.</li>'}</ul>`;
+      <div class="resumo-blocos">
+        ${bloco(r.resumo.total, 'Produtos na planilha')}
+        ${bloco(r.resumo.ativos, 'No ar')}
+        ${bloco(r.resumo.inativos, 'Inativos')}
+        ${bloco(r.resumo.semImagem, 'Sem foto')}
+      </div>
+
+      <section class="secao-admin">
+        <h2>Erros (${r.erros.length})</h2>
+        ${listaErros
+          ? `<ul class="lista-erros">${listaErros}</ul>`
+          : '<p class="texto-vazio">Nenhum erro. Está tudo certo.</p>'}
+      </section>
+
+      <section class="secao-admin">
+        <h2>Avisos (${r.avisos.length})</h2>
+        ${listaAvisos
+          ? `<ul class="lista-avisos">${listaAvisos}</ul>`
+          : '<p class="texto-vazio">Nenhum aviso.</p>'}
+      </section>`;
   } catch (e) {
-    saida.textContent = 'Não consegui ler a planilha: ' + e.message;
+    const div = document.createElement('div');
+    div.className = 'resultado erro';
+    const p = document.createElement('p');
+    p.textContent = 'Não consegui ler a planilha: ' + e.message;
+    div.appendChild(p);
+    saida.replaceChildren(div);
+  } finally {
+    mostrarSpinner(false);
   }
 });
 </script>
