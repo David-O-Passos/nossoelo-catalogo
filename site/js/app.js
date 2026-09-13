@@ -27,12 +27,18 @@ function limparNome(nome) {
 
 function cartao(p) {
   const el = document.createElement('article');
-  el.className = p.esgotado ? 'produto esgotado' : 'produto';
+  // Destaque fica sempre no topo da grade (ver render()), independente do
+  // filtro/ordenacao escolhido — sem um sinal visual, isso parece bug de
+  // ordenacao para quem esta olhando. O selo e a borda deixam claro que o
+  // produto esta fixo ali de proposito.
+  el.className = ['produto', p.destaque && 'destaque', p.esgotado && 'esgotado']
+    .filter(Boolean).join(' ');
 
   const nome = escapar(limparNome(p.nome));
   const marca = marcaLimpa(p.marca);
   const src = p.imagem ? `img/${encodeURIComponent(p.imagem)}` : 'img/placeholder.webp';
   const selo = p.desconto ? `<span class="selo">-${p.desconto}%</span>` : '';
+  const seloDestaque = p.destaque ? '<span class="selo-destaque">★ Destaque</span>' : '';
   const seloEsgotado = p.esgotado ? '<span class="selo-esgotado">ESGOTADO</span>' : '';
   const de = p.precoDe && p.precoDe > p.precoPor
     ? `<div class="preco-de">R$ ${reais(p.precoDe)}</div>` : '';
@@ -40,6 +46,7 @@ function cartao(p) {
   el.innerHTML = `
     <div class="moldura" role="button" tabindex="0" aria-label="Ver detalhes de ${nome}">
       ${selo}
+      ${seloDestaque}
       ${seloEsgotado}
       <img src="${src}" alt="${nome}" loading="lazy" decoding="async">
     </div>
