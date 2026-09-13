@@ -380,7 +380,18 @@ body {
   text-align: center;
   text-decoration: none;
   background: var(--zap);
+  border: 0;
   border-radius: 999px;
+  cursor: pointer;
+}
+
+/* #detalhe-somar (modal de detalhe) usa esta mesma classe — sem esta regra
+   o botao "Adicionar ao pedido" do produto esgotado ficava verde e clicavel
+   na aparencia, mesmo com o atributo disabled desativando o clique de verdade. */
+.botao-enviar:disabled {
+  color: var(--suave);
+  background: var(--linha);
+  cursor: not-allowed;
 }
 
 .aviso-longo {
