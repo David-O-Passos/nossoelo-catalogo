@@ -40,6 +40,20 @@ test('avisa sobre desconto invalido sem invalidar a linha', () => {
   assert.ok(r.avisos.some((a) => /desconto/i.test(a)));
 });
 
+test('ignora linhas vazias com valores padrao arrastados', () => {
+  const vazia = { id: '', ativo: 'sim', nome: '', preco_por: '', destaque: 'não' };
+  const r = analisar([base, vazia, vazia], ['kaiak.webp']);
+  assert.equal(r.erros.length, 0);
+  assert.equal(r.resumo.total, 1);
+});
+
+test('avisa quando preco_de tem texto que o site nao le', () => {
+  const r = analisar([{ ...base, preco_de: 'cento e vinte' }], ['kaiak.webp']);
+  assert.ok(r.avisos.some((a) => /preco_de/.test(a)));
+  const ok = analisar([{ ...base, preco_de: 'R$ 189,90' }], ['kaiak.webp']);
+  assert.ok(!ok.avisos.some((a) => /preco_de/.test(a)));
+});
+
 test('conta ativos, inativos e sem imagem', () => {
   const r = analisar([
     base,

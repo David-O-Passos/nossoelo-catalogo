@@ -68,6 +68,15 @@ test('reconciliar atualiza preco alterado e avisa', () => {
   assert.match(avisos[0], /pre/i);
 });
 
+test('reconciliar retira item que esgotou e avisa', () => {
+  const c = new Carrinho(memoria());
+  c.adicionar(kaiak);
+  c.adicionar(humor);
+  const avisos = c.reconciliar([{ ...kaiak, esgotado: true }, humor]);
+  assert.deepEqual(c.itens().map((i) => i.id), ['humor']);
+  assert.match(avisos[0], /esgotou/);
+});
+
 test('reconciliar sem mudancas nao gera aviso', () => {
   const c = new Carrinho(memoria());
   c.adicionar(kaiak);

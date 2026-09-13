@@ -20,6 +20,11 @@ function escapar(texto) {
     .replaceAll('"', '&quot;');
 }
 
+/** Foto que falhou vira o placeholder — uma vez so, para nao entrar em loop se ele tambem faltar. */
+function trocarPorPlaceholder(e) {
+  if (!e.target.src.endsWith('placeholder.webp')) e.target.src = 'img/placeholder.webp';
+}
+
 /** Tira sobras da conversao do Word: hifen ou ponto solto no fim do nome. */
 function limparNome(nome) {
   return String(nome || '').replace(/[\s\-–—.,;:]+$/, '').trim();
@@ -65,9 +70,7 @@ function cartao(p) {
       </div>
     </div>`;
 
-  el.querySelector('img').addEventListener('error', (e) => {
-    e.target.src = 'img/placeholder.webp';
-  });
+  el.querySelector('img').addEventListener('error', trocarPorPlaceholder);
 
   const abrirEsteDetalhe = () => abrirDetalhe(p);
   const moldura = el.querySelector('.moldura');
@@ -107,7 +110,13 @@ function cartao(p) {
  * pagina de baixo e fechar ao clicar fora, sem depender de um botao "Fechar". */
 function prepararDialog(dialog) {
   dialog.addEventListener('click', (e) => {
-    if (e.target === dialog) dialog.close();
+    // O padding do proprio <dialog> tambem tem target === dialog; so o que
+    // cai fora do retangulo dele e o fundo borrado de verdade.
+    if (e.target !== dialog) return;
+    const r = dialog.getBoundingClientRect();
+    const fora = e.clientX < r.left || e.clientX > r.right
+      || e.clientY < r.top || e.clientY > r.bottom;
+    if (fora) dialog.close();
   });
   dialog.addEventListener('close', () => {
     document.body.classList.remove('sem-rolagem');
@@ -127,8 +136,9 @@ function abrirDetalhe(p) {
   const de = p.precoDe && p.precoDe > p.precoPor
     ? `<div class="preco-de">R$ ${reais(p.precoDe)}</div>` : '';
 
+  $('#detalhe-imagem').onerror = trocarPorPlaceholder;
   $('#detalhe-imagem').src = src;
-  $('#detalhe-imagem').alt = escapar(nome);
+  $('#detalhe-imagem').alt = nome;
   $('#detalhe-nome').textContent = nome;
   $('#detalhe-marca').textContent = [marca, p.tamanho].filter(Boolean).join(' · ');
   $('#detalhe-precos').innerHTML = de + '<div class="preco-por">R$ ' + reais(p.precoPor) + '</div>';
@@ -187,6 +197,9 @@ function render() {
     // escolhida pelo cliente e preservada dentro de cada grupo. Sem isto a
     // primeira tela do celular enche de quadro cinza e o catalogo parece vazio.
     .sort((a, b) => (a.imagem ? 0 : 1) - (b.imagem ? 0 : 1))
+    // Esgotado nao compra: fica no fim do seu grupo, sem empurrar produto
+    // disponivel para baixo.
+    .sort((a, b) => (a.esgotado ? 1 : 0) - (b.esgotado ? 1 : 0))
     // Produto em destaque vem antes de tudo. Por ser a ultima ordenacao (e o
     // sort continuar estavel), o agrupamento por foto e a ordem escolhida pelo
     // cliente ficam preservados dentro de cada grupo de destaque.
@@ -240,20 +253,26 @@ function renderCarrinho() {
 }
 
 async function iniciar() {
-  let backup = [];
-  try {
-    backup = await (await fetch('produtos-backup.json')).json();
-  } catch { backup = []; }
+  $('#contador').textContent = 'Carregando produtos…';
 
-  todos = await carregarProdutos({ backup });
+  const { produtos, origem } = await carregarProdutos({
+    carregarBackup: async () => (await fetch('produtos-backup.json')).json(),
+  });
+  todos = produtos;
 
-  const avisos = carrinho.reconciliar(todos);
-  // Se carregarProdutos devolveu exatamente o array de backup que passamos
-  // (mesma referencia), e porque cache e rede falharam e ele caiu no
-  // congelado embutido no site. Isso pode durar semanas sem que ninguem
-  // perceba se a planilha estiver quebrada; avisar na tela e a unica rede
-  // de seguranca.
-  if (todos === backup) {
+  if (origem === 'nenhum') {
+    $('#contador').textContent = '';
+    $('#falha-carregar').hidden = false;
+    $('#tentar-de-novo').addEventListener('click', () => location.reload());
+    return;
+  }
+
+  // Contra o backup congelado, produto novo da planilha pareceria "sumido" e
+  // seria arrancado do carrinho do cliente sem motivo.
+  const avisos = origem === 'backup' ? [] : carrinho.reconciliar(todos);
+  // O backup pode ficar semanas no ar sem ninguem perceber se a planilha
+  // quebrar; avisar na tela e a unica rede de seguranca.
+  if (origem === 'backup') {
     avisos.push('Preços podem estar desatualizados. Confirme pelo WhatsApp antes de fechar o pedido.');
   }
   if (avisos.length) {

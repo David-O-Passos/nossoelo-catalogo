@@ -1,4 +1,4 @@
-import { normalizarProduto } from './dados.js';
+import { linhaVazia, normalizarProduto, numero } from './dados.js';
 
 /** Confere a planilha inteira contra as regras e contra a pasta de imagens. */
 export function analisar(linhas, arquivosExistentes = []) {
@@ -7,9 +7,11 @@ export function analisar(linhas, arquivosExistentes = []) {
   const vistos = new Set();
   const erros = [];
   const avisos = [];
-  let ativos = 0, inativos = 0, semImagem = 0;
+  let total = 0, ativos = 0, inativos = 0, semImagem = 0;
 
   linhas.forEach((linha, i) => {
+    if (linhaVazia(linha)) return;
+    total++;
     const numeroLinha = i + 2;
     const p = normalizarProduto(linha);
 
@@ -39,6 +41,13 @@ export function analisar(linhas, arquivosExistentes = []) {
     if (descontoBruto && p.desconto === null) {
       avisos.push(`Linha ${numeroLinha}: desconto inválido (${descontoBruto}).`);
     }
+
+    // Preco com texto que o site nao consegue ler some da tela sem erro
+    // nenhum — foi assim que o preco riscado sumiu quando a coluna virou moeda.
+    const precoDeBruto = String(linha.preco_de || '').trim();
+    if (precoDeBruto && numero(precoDeBruto) === null) {
+      avisos.push(`Linha ${numeroLinha}: preco_de ilegível (${precoDeBruto}).`);
+    }
   });
 
   for (const arquivo of existentes) {
@@ -49,6 +58,6 @@ export function analisar(linhas, arquivosExistentes = []) {
 
   return {
     erros, avisos,
-    resumo: { total: linhas.length, ativos, inativos, semImagem },
+    resumo: { total, ativos, inativos, semImagem },
   };
 }

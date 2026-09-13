@@ -71,11 +71,15 @@ export class Carrinho {
     for (const item of this._itens) {
       const atual = porId.get(item.id);
       if (!atual) {
-        avisos.push(`${item.nome} saiu do catalogo e foi retirado do seu pedido.`);
+        avisos.push(`${item.nome} saiu do catálogo e foi retirado do seu pedido.`);
+        continue;
+      }
+      if (atual.esgotado) {
+        avisos.push(`${item.nome} esgotou e foi retirado do seu pedido.`);
         continue;
       }
       if (atual.precoPor !== item.precoPor) {
-        avisos.push(`O preco de ${item.nome} mudou para R$ ${reais(atual.precoPor)}.`);
+        avisos.push(`O preço de ${item.nome} mudou para R$ ${reais(atual.precoPor)}.`);
         item.precoPor = atual.precoPor;
       }
       mantidos.push(item);

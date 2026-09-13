@@ -1,14 +1,16 @@
 import { parseCSV } from './csv.js';
 import { CACHE_MS, CHAVE_CACHE, URL_PLANILHA } from './config.js';
 
-/** Aceita "189,90", "1.299,90", "75.0" e "110". Devolve null se nao for numero.
+/** Aceita "189,90", "1.299,90", "75.0", "110" e "R$ 169,90". Devolve null se nao for numero.
  *
  * O separador decimal depende do idioma da planilha publicada, e ninguem vai
  * lembrar de conferir isso. Ler os dois formatos evita um preco 10x errado
  * numa loja no ar — que na tela pareceria perfeitamente normal.
  */
-function numero(texto) {
-  const bruto = String(texto ?? '').trim();
+export function numero(texto) {
+  // Coluna formatada como moeda publica "R$ 169,90": sem tirar o simbolo,
+  // parseFloat devolve NaN e o preco riscado some de todos os produtos.
+  const bruto = String(texto ?? '').replace(/[^\d,.-]/g, '');
   if (!bruto) return null;
 
   let limpo;
@@ -29,6 +31,11 @@ function numero(texto) {
 
 function verdadeiro(texto) {
   return ['sim', 's', 'true', '1'].includes(String(texto || '').trim().toLowerCase());
+}
+
+/** Linha sem id, nome e preco_por: sobra de valor padrao arrastado na planilha, nao e produto. */
+export function linhaVazia(linha) {
+  return !['id', 'nome', 'preco_por'].some((coluna) => String(linha[coluna] ?? '').trim());
 }
 
 /** Converte uma linha crua da planilha. Retorna null se for invalida. */
@@ -65,6 +72,7 @@ export function validarLista(linhas) {
   const vistos = new Set();
 
   linhas.forEach((linha, i) => {
+    if (linhaVazia(linha)) return;
     const numeroLinha = i + 2; // +1 do cabecalho, +1 porque planilha comeca em 1
     const p = normalizarProduto(linha);
     if (!p) {
@@ -82,14 +90,32 @@ export function validarLista(linhas) {
   return { produtos, erros };
 }
 
-/** Busca os produtos com cache, cache vencido e backup como quedas sucessivas. */
+/** Corre a busca contra um prazo; no 4G ruim, sem isto a tela fica em branco indefinidamente. */
+function comPrazo(tarefa, ms) {
+  const controle = new AbortController();
+  let relogio;
+  const prazo = new Promise((_, rejeitar) => {
+    relogio = setTimeout(() => {
+      controle.abort();
+      rejeitar(new Error('tempo esgotado'));
+    }, ms);
+  });
+  return Promise.race([tarefa(controle.signal), prazo]).finally(() => clearTimeout(relogio));
+}
+
+/**
+ * Busca os produtos com cache, rede, cache vencido e backup como quedas sucessivas.
+ * Devolve { produtos, origem } com origem 'cache' | 'rede' | 'cache-vencido' | 'backup' | 'nenhum'.
+ * O backup so e baixado quando todo o resto falha: ele pesa e quase nunca e usado.
+ */
 export async function carregarProdutos(deps = {}) {
   const {
     fetch: buscar = globalThis.fetch,
     storage = globalThis.localStorage,
     agora = () => Date.now(),
     urlPlanilha = URL_PLANILHA,
-    backup = [],
+    carregarBackup = async () => [],
+    prazoMs = 8000,
   } = deps;
 
   let cache = null;
@@ -97,24 +123,31 @@ export async function carregarProdutos(deps = {}) {
     const bruto = storage.getItem(CHAVE_CACHE);
     if (bruto) cache = JSON.parse(bruto);
   } catch { cache = null; }
+  const temCache = Boolean(cache && Array.isArray(cache.produtos));
 
-  if (cache && Array.isArray(cache.produtos) && agora() - cache.quando < CACHE_MS) {
-    return cache.produtos;
+  if (temCache && agora() - cache.quando < CACHE_MS) {
+    return { produtos: cache.produtos, origem: 'cache' };
   }
 
   try {
-    const resposta = await buscar(urlPlanilha);
-    if (!resposta.ok) throw new Error('resposta ' + resposta.status);
-    const { produtos } = validarLista(parseCSV(await resposta.text()));
+    const texto = await comPrazo(async (signal) => {
+      const resposta = await buscar(urlPlanilha, { signal });
+      if (!resposta.ok) throw new Error('resposta ' + resposta.status);
+      return resposta.text();
+    }, prazoMs);
+    const { produtos } = validarLista(parseCSV(texto));
     if (!produtos.length) throw new Error('planilha vazia');
     try {
       storage.setItem(CHAVE_CACHE, JSON.stringify({ quando: agora(), produtos }));
     } catch { /* cota cheia: seguir sem cache */ }
-    return produtos;
+    return { produtos, origem: 'rede' };
   } catch {
-    if (cache && Array.isArray(cache.produtos) && cache.produtos.length) {
-      return cache.produtos;
+    if (temCache && cache.produtos.length) {
+      return { produtos: cache.produtos, origem: 'cache-vencido' };
     }
-    return backup;
+    let backup = [];
+    try { backup = await carregarBackup(); } catch { backup = []; }
+    if (Array.isArray(backup) && backup.length) return { produtos: backup, origem: 'backup' };
+    return { produtos: [], origem: 'nenhum' };
   }
 }
