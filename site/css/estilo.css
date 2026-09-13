@@ -518,9 +518,15 @@ body.sem-rolagem { overflow: hidden; }
 
 .detalhe-descricao {
   margin: 0 0 16px;
+  padding-right: 4px;
   font-size: 14.5px;
   line-height: 1.5;
   color: var(--tinta);
+  /* Descricao longa rola dentro da propria caixa, em vez de esticar o modal
+     inteiro e empurrar o botao "Adicionar ao pedido" pra fora da tela. */
+  max-height: 6.6em;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 /* ---------- Telas maiores ---------- */
