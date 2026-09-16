@@ -186,17 +186,17 @@ function abrirDetalhe(p) {
   abrirDialog($('#detalhe-produto'));
 }
 
-/** Monta uma linha de chips (marca ou categoria), cruzada com o outro filtro
- * (busca nao entra na conta). Esconde chip sem produto no filtro atual,
- * exceto o que estiver ativo. Preserva o scroll horizontal da linha. */
+/** Monta uma linha de chips. Com "contagem", esconde o chip sem produto no
+ * filtro atual (exceto o ativo); sem ela, mostra a lista inteira sempre.
+ * Preserva o scroll horizontal da linha. */
 function montarChipsGenerico(nav, valores, ativoAtual, contagem, aoEscolher) {
   const scrollAnterior = nav.scrollLeft;
   nav.replaceChildren();
 
   const itens = [['', 'Tudo'], ...valores.map((v) => [v, v])];
   for (const [valor, rotuloBase] of itens) {
-    const quantidade = valor === '' ? null : (contagem.get(valor) || 0);
-    if (valor !== '' && quantidade === 0 && valor !== ativoAtual) continue;
+    const quantidade = contagem && valor !== '' ? (contagem.get(valor) || 0) : null;
+    if (quantidade === 0 && valor !== ativoAtual) continue;
 
     const b = document.createElement('button');
     b.type = 'button';
@@ -214,22 +214,30 @@ function montarChipsGenerico(nav, valores, ativoAtual, contagem, aoEscolher) {
   nav.scrollLeft = scrollAnterior;
 }
 
-/** Reconstroi os chips a cada render (nao so uma vez): a contagem de cada
- * marca depende da categoria ativa e vice-versa. */
+/** A fileira de marcas e fixa: sumir uma marca porque a categoria escolhida
+ * nao tem produto dela confunde quem nao conhece o estoque ("cade a Natura?").
+ * Quem se adapta e a categoria, que so mostra o que existe na marca escolhida. */
 function renderChips() {
-  const porCategoria = categoriaAtiva
-    ? todos.filter((p) => categoriaLimpa(p.categoria) === categoriaAtiva) : todos;
   const porMarca = marcaAtiva
     ? todos.filter((p) => marcaLimpa(p.marca) === marcaAtiva) : todos;
-
-  const contagemMarcas = contarPor(porCategoria, (p) => marcaLimpa(p.marca));
   const contagemCategorias = contarPor(porMarca, (p) => categoriaLimpa(p.categoria));
 
-  montarChipsGenerico($('#chips'), marcasTodas, marcaAtiva, contagemMarcas, (v) => { marcaAtiva = v; });
+  montarChipsGenerico($('#chips'), marcasTodas, marcaAtiva, null, (v) => {
+    marcaAtiva = v;
+    // A marca manda: se a categoria escolhida antes nao existe nela, volta
+    // para "Tudo" em vez de mostrar uma tela vazia.
+    if (categoriaAtiva && !porCategoriaDaMarca(v).has(categoriaAtiva)) categoriaAtiva = '';
+  });
   montarChipsGenerico(
     $('#chips-categoria'), categoriasTodas, categoriaAtiva, contagemCategorias,
     (v) => { categoriaAtiva = v; },
   );
+}
+
+/** Categorias que existem dentro de uma marca (vazio = catalogo inteiro). */
+function porCategoriaDaMarca(marca) {
+  const lista = marca ? todos.filter((p) => marcaLimpa(p.marca) === marca) : todos;
+  return contarPor(lista, (p) => categoriaLimpa(p.categoria));
 }
 
 function atualizarBotaoLimparBusca() {
